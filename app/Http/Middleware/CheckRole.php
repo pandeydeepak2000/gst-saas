@@ -20,6 +20,6 @@ class CheckRole
             return $next($request);
         }
 
-        abort(403, 'Unauthorized access to this module.');
+        abort(403, 'Unauthorized access to this module. Please login as Super Admin (superadmin@gstsaas.com) to access Governance.');
     }
 }

@@ -146,8 +146,8 @@
                     <p class="text-xs text-slate-500 mt-0.5">Customize your SaaS portal's primary aesthetic palette across navigation, action buttons, and badges.</p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ (->brand_theme ?? 'violet') === 'emerald' ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-slate-300' }}">
-                        <input type="radio" name="brand_theme" value="emerald" class="sr-only" {{ (->brand_theme ?? 'violet') === 'emerald' ? 'checked' : '' }}>
+                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->brand_theme ?? 'violet') === 'emerald' ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-slate-300' }}">
+                        <input type="radio" name="brand_theme" value="emerald" class="sr-only" {{ ($company->brand_theme ?? 'violet') === 'emerald' ? 'checked' : '' }}>
                         <div class="flex items-center gap-2 mb-1.5">
                             <span class="w-4 h-4 rounded-full bg-emerald-600"></span>
                             <strong class="text-xs text-slate-900 font-bold">Forest Emerald</strong>
@@ -155,8 +155,8 @@
                         <p class="text-[11px] text-slate-500">Deep emerald & titanium slate. Clean fintech aesthetic.</p>
                     </label>
 
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ (->brand_theme ?? 'violet') === 'violet' ? 'border-purple-600 bg-purple-50/40 ring-2 ring-purple-500/20' : 'border-slate-200 hover:border-slate-300' }}">
-                        <input type="radio" name="brand_theme" value="violet" class="sr-only" {{ (->brand_theme ?? 'violet') === 'violet' ? 'checked' : '' }}>
+                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->brand_theme ?? 'violet') === 'violet' ? 'border-purple-600 bg-purple-50/40 ring-2 ring-purple-500/20' : 'border-slate-200 hover:border-slate-300' }}">
+                        <input type="radio" name="brand_theme" value="violet" class="sr-only" {{ ($company->brand_theme ?? 'violet') === 'violet' ? 'checked' : '' }}>
                         <div class="flex items-center gap-2 mb-1.5">
                             <span class="w-4 h-4 rounded-full bg-purple-600"></span>
                             <strong class="text-xs text-slate-900 font-bold">Electric Amethyst</strong>
@@ -164,8 +164,8 @@
                         <p class="text-[11px] text-slate-500">Royal violet & cyber cyan. Next-Gen Cloud ERP look.</p>
                     </label>
 
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ (->brand_theme ?? 'violet') === 'amber' ? 'border-amber-600 bg-amber-50/40 ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-slate-300' }}">
-                        <input type="radio" name="brand_theme" value="amber" class="sr-only" {{ (->brand_theme ?? 'violet') === 'amber' ? 'checked' : '' }}>
+                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->brand_theme ?? 'violet') === 'amber' ? 'border-amber-600 bg-amber-50/40 ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-slate-300' }}">
+                        <input type="radio" name="brand_theme" value="amber" class="sr-only" {{ ($company->brand_theme ?? 'violet') === 'amber' ? 'checked' : '' }}>
                         <div class="flex items-center gap-2 mb-1.5">
                             <span class="w-4 h-4 rounded-full bg-amber-600"></span>
                             <strong class="text-xs text-slate-900 font-bold">Warm Amber</strong>
@@ -173,8 +173,8 @@
                         <p class="text-[11px] text-slate-500">Golden merchant bronze & slate. Premium trading feel.</p>
                     </label>
 
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ (->brand_theme ?? 'violet') === 'rose' ? 'border-rose-600 bg-rose-50/40 ring-2 ring-rose-500/20' : 'border-slate-200 hover:border-slate-300' }}">
-                        <input type="radio" name="brand_theme" value="rose" class="sr-only" {{ (->brand_theme ?? 'violet') === 'rose' ? 'checked' : '' }}>
+                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->brand_theme ?? 'violet') === 'rose' ? 'border-rose-600 bg-rose-50/40 ring-2 ring-rose-500/20' : 'border-slate-200 hover:border-slate-300' }}">
+                        <input type="radio" name="brand_theme" value="rose" class="sr-only" {{ ($company->brand_theme ?? 'violet') === 'rose' ? 'checked' : '' }}>
                         <div class="flex items-center gap-2 mb-1.5">
                             <span class="w-4 h-4 rounded-full bg-rose-600"></span>
                             <strong class="text-xs text-slate-900 font-bold">Titan Crimson</strong>
@@ -188,33 +188,33 @@
             <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
                 <h3 class="text-sm font-bold text-slate-900">Invoice Visual Templates (3 Formats)</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ (->invoice_design_template ?? 'modern') === 'modern' ? 'border-brand-600 bg-brand-50/30' : 'border-slate-200' }}">
-                        <input type="radio" name="invoice_design_template" value="modern" class="sr-only" {{ (->invoice_design_template ?? 'modern') === 'modern' ? 'checked' : '' }}>
+                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_design_template ?? 'modern') === 'modern' ? 'border-brand-600 bg-brand-50/30' : 'border-slate-200' }}">
+                        <input type="radio" name="invoice_design_template" value="modern" class="sr-only" {{ ($company->invoice_design_template ?? 'modern') === 'modern' ? 'checked' : '' }}>
                         <div class="flex items-center justify-between mb-1">
                             <span class="font-bold text-xs sm:text-sm text-slate-900">✨ Modern Executive</span>
-                            @if((->invoice_design_template ?? 'modern') === 'modern')
+                            @if(($company->invoice_design_template ?? 'modern') === 'modern')
                             <span class="text-[10px] font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Active</span>
                             @endif
                         </div>
                         <p class="text-[11px] text-slate-500">Contemporary card structure, balanced compact spacing without empty void.</p>
                     </label>
 
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ (->invoice_design_template ?? 'modern') === 'classic' ? 'border-brand-600 bg-brand-50/30' : 'border-slate-200' }}">
-                        <input type="radio" name="invoice_design_template" value="classic" class="sr-only" {{ (->invoice_design_template ?? 'modern') === 'classic' ? 'checked' : '' }}>
+                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_design_template ?? 'modern') === 'classic' ? 'border-brand-600 bg-brand-50/30' : 'border-slate-200' }}">
+                        <input type="radio" name="invoice_design_template" value="classic" class="sr-only" {{ ($company->invoice_design_template ?? 'modern') === 'classic' ? 'checked' : '' }}>
                         <div class="flex items-center justify-between mb-1">
                             <span class="font-bold text-xs sm:text-sm text-slate-900">📋 Classic Corporate</span>
-                            @if((->invoice_design_template ?? 'modern') === 'classic')
+                            @if(($company->invoice_design_template ?? 'modern') === 'classic')
                             <span class="text-[10px] font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Active</span>
                             @endif
                         </div>
                         <p class="text-[11px] text-slate-500">Crisp monochrome border grid, traditional corporate Tally layout, compact footer.</p>
                     </label>
 
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ (->invoice_design_template ?? 'modern') === 'greenstudio' ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/20' : 'border-slate-200' }}">
-                        <input type="radio" name="invoice_design_template" value="greenstudio" class="sr-only" {{ (->invoice_design_template ?? 'modern') === 'greenstudio' ? 'checked' : '' }}>
+                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_design_template ?? 'modern') === 'greenstudio' ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/20' : 'border-slate-200' }}">
+                        <input type="radio" name="invoice_design_template" value="greenstudio" class="sr-only" {{ ($company->invoice_design_template ?? 'modern') === 'greenstudio' ? 'checked' : '' }}>
                         <div class="flex items-center justify-between mb-1">
                             <span class="font-bold text-xs sm:text-sm text-slate-900">🌿 Green Studio</span>
-                            @if((->invoice_design_template ?? 'modern') === 'greenstudio')
+                            @if(($company->invoice_design_template ?? 'modern') === 'greenstudio')
                             <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Active</span>
                             @endif
                         </div>
