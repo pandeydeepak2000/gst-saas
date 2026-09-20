@@ -223,6 +223,7 @@ class InvoiceController extends Controller
             ->findOrFail($id);
 
         $company = $invoice->company;
+        $customer = $invoice->customer;
 
         // Dynamic WhatsApp Share Link
         $cleanPhone = preg_replace('/[^0-9]/', '', $invoice->customer?->phone ?? '');
@@ -274,7 +275,22 @@ class InvoiceController extends Controller
         $customers = Customer::orderBy('name')->get();
         $products = Product::where('is_active', true)->orderBy('name')->get();
 
-        return view('invoices.edit', compact('invoice', 'company', 'customers', 'products'));
+        $existingItems = $invoice->items->map(function($i) {
+            return [
+                'description'          => $i->description,
+                'hsn_sac'              => $i->hsn_sac ?? '',
+                'quantity'             => (float) $i->quantity,
+                'unit'                 => $i->unit,
+                'rate'                 => (float) $i->rate,
+                'gst_percent'          => (float) $i->gst_percent,
+                'domain_name'          => $i->domain_name ?? '',
+                'service_period_start' => $i->service_period_start ? (\Carbon\Carbon::parse($i->service_period_start)->format('Y-m-d')) : '',
+                'service_period_end'   => $i->service_period_end ? (\Carbon\Carbon::parse($i->service_period_end)->format('Y-m-d')) : '',
+                'billing_cycle'        => $i->billing_cycle ?? '',
+            ];
+        });
+
+        return view('invoices.edit', compact('invoice', 'company', 'customers', 'products', 'existingItems'));
     }
 
     public function update(Request $request, $id)
@@ -490,8 +506,9 @@ class InvoiceController extends Controller
 
     public function print($id)
     {
-        $invoice = Invoice::withTrashed()->with(['customer', 'items', 'company'])->findOrFail($id);
+        $invoice = Invoice::withTrashed()->with(['customer', 'items', 'company', 'transactions'])->findOrFail($id);
         $company = $invoice->company;
+        $customer = $invoice->customer;
 
         // UPI QR URL for print
         $upiUrl = null;
@@ -504,6 +521,6 @@ class InvoiceController extends Controller
             $upiUrl = "upi://pay?pa={$pa}&pn={$pn}&am={$am}&tr={$tr}&tn={$tn}&cu=INR";
         }
 
-        return view('invoices.print', compact('invoice', 'company', 'upiUrl'));
+        return view('invoices.print', compact('invoice', 'company', 'customer', 'upiUrl'));
     }
 }

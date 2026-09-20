@@ -36,7 +36,7 @@
                         <input type="text" name="invoice_number" value="{{ old('invoice_number', $invoice->invoice_number) }}" required
                                class="w-full px-3.5 py-2 rounded-xl border-2 border-brand-200 text-brand-900 font-mono font-bold focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none bg-brand-50/20">
                         <p class="text-[11px] text-brand-600 font-medium mt-1">
-                            ✏️ Freely editable by company
+                            âœï¸ Freely editable by company
                         </p>
                     </div>
 
@@ -107,7 +107,7 @@
                 <!-- Product Autocomplete Datalist -->
                 <datalist id="products-catalog">
                     @foreach($products as $prod)
-                        <option value="{{ $prod->name }}">{{ $prod->name }} (₹{{ number_format($prod->rate, 2) }} - HSN: {{ $prod->hsn_sac ?: 'N/A' }})</option>
+                        <option value="{{ $prod->name }}">{{ $prod->name }} (â‚¹{{ number_format($prod->rate, 2) }} - HSN: {{ $prod->hsn_sac ?: 'N/A' }})</option>
                     @endforeach
                 </datalist>
 
@@ -120,9 +120,9 @@
                                 <th class="py-2.5 px-3 w-28">HSN/SAC</th>
                                 <th class="py-2.5 px-3 w-24">Qty *</th>
                                 <th class="py-2.5 px-3 w-24">Unit</th>
-                                <th class="py-2.5 px-3 w-32">Rate (₹) *</th>
+                                <th class="py-2.5 px-3 w-32">Rate (â‚¹) *</th>
                                 <th class="py-2.5 px-3 w-24">GST %</th>
-                                <th class="py-2.5 px-3 w-32 text-right">Total (₹)</th>
+                                <th class="py-2.5 px-3 w-32 text-right">Total (â‚¹)</th>
                                 <th class="py-2.5 px-2 w-10 text-center"></th>
                             </tr>
                         </thead>
@@ -140,7 +140,7 @@
                                         
                                         <!-- Hosting / Domain & Service Period Inputs -->
                                         <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] bg-slate-50 p-1.5 rounded-lg border border-slate-200/70">
-                                            <span class="text-brand-700 font-bold">🌐 Domain/Cloud:</span>
+                                            <span class="text-brand-700 font-bold">ðŸŒ Domain/Cloud:</span>
                                             <input type="text" :name="`items[${index}][domain_name]`" x-model="item.domain_name" placeholder="e.g. greenstudio.jixsite.com"
                                                    class="px-2 py-0.5 text-xs rounded border border-slate-300 w-44 font-mono text-brand-900 bg-white">
                                             <span class="text-slate-400">Period:</span>
@@ -284,20 +284,7 @@
     @push('scripts')
     <script>
         function invoiceEditor() {
-            const existingItems = @json($invoice->items->map(function($i) {
-                return [
-                    'description' => $i->description,
-                    'hsn_sac'     => $i->hsn_sac ?? '',
-                    'quantity'    => (float)$i->quantity,
-                    'unit'        => $i->unit,
-                    'rate'        => (float)$i->rate,
-                    'gst_percent' => (float)$i->gst_percent,
-                    'domain_name' => $i->domain_name ?? '',
-                    'service_period_start' => $i->service_period_start ? $i->service_period_start->format('Y-m-d') : '',
-                    'service_period_end' => $i->service_period_end ? $i->service_period_end->format('Y-m-d') : '',
-                    'billing_cycle' => $i->billing_cycle ?? '',
-                ];
-            }));
+            const existingItems = @json($existingItems);
 
             return {
                 taxMode: '{{ $invoice->tax_mode }}',
@@ -339,7 +326,7 @@
                     return this.totalTaxable() + this.totalTax();
                 },
                 formatCurrency(val) {
-                    return '₹' + (Number(val) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    return 'â‚¹' + (Number(val) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 },
                 validateForm(e) {
                     if (this.items.length === 0) {

@@ -35,7 +35,8 @@ class CompanySettingsController extends Controller
 
             // Invoice Template Preset: 'standard' or 'hosting_domain'
             'invoice_template'            => ['nullable', 'in:standard,hosting_domain'],
-            'invoice_design_template'     => ['nullable', 'in:modern,classic'],
+            'invoice_design_template'     => ['nullable', 'in:modern,classic,greenstudio'],
+            'brand_theme'                 => ['nullable', 'in:violet,emerald,amber,rose'],
             'show_bank_on_invoice'        => ['nullable', 'boolean'],
             'show_qr_on_invoice'          => ['nullable', 'boolean'],
 
