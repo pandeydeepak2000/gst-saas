@@ -101,10 +101,17 @@
                         <h3 class="font-bold text-slate-900">Line Items & Products</h3>
                         <p class="text-xs text-slate-500">Single-line streamlined item rows. Press <kbd class="px-1.5 py-0.5 rounded bg-slate-100 border text-[11px]">Enter</kbd> to add row automatically.</p>
                     </div>
-                    <button type="button" @click="addItem()" class="px-3 py-1.5 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold border border-brand-200 transition-colors">
+                                        <button type="button" @click="addItem()" class="px-3 py-1.5 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold border border-brand-200 transition-colors">
                         + Add Item Row
                     </button>
                 </div>
+
+                <!-- Product Autocomplete Datalist -->
+                <datalist id="products-catalog">
+                    @foreach($products as $prod)
+                        <option value="{{ $prod->name }}">{{ $prod->name }} (₹{{ number_format($prod->rate, 2) }} - HSN: {{ $prod->hsn_sac ?: 'N/A' }})</option>
+                    @endforeach
+                </datalist>
 
                 <div class="overflow-x-auto border border-slate-200 rounded-xl">
                     <table class="w-full text-left text-sm">
@@ -127,7 +134,9 @@
                                     <td class="py-2 px-3 text-center text-xs font-mono font-bold text-slate-400" x-text="index + 1"></td>
                                     
                                     <td class="py-2 px-3">
-                                        <input type="text" :name="`items[${index}][description]`" x-model="item.description" required placeholder="Description of goods or service"
+                                        <input type="text" :name="`items[${index}][description]`" x-model="item.description" required placeholder="Start typing item name..."
+                                               list="products-catalog"
+                                               @input="checkCatalog(item)"
                                                @keydown.enter.prevent="addItem()"
                                                class="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 focus:ring-1 focus:ring-brand-500 focus:outline-none">
                                     </td>
@@ -261,6 +270,16 @@
         function invoiceBuilder() {
             return {
                 taxMode: '{{ $company->tax_mode }}',
+                catalog: @json($products),
+                checkCatalog(item) {
+                    const found = this.catalog.find(p => p.name.toLowerCase() === (item.description || '').trim().toLowerCase());
+                    if (found) {
+                        if (found.hsn_sac) item.hsn_sac = found.hsn_sac;
+                        if (found.unit) item.unit = found.unit;
+                        if (found.rate) item.rate = found.rate;
+                        if (found.gst_percent !== undefined) item.gst_percent = found.gst_percent;
+                    }
+                },
                 saleType: 'LOCAL',
                 items: [
                     { description: '', hsn_sac: '', quantity: 1, unit: 'Pcs', rate: 0, gst_percent: 18 }

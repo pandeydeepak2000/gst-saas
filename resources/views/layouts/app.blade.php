@@ -123,6 +123,11 @@
                     Customers
                 </a>
 
+                <a href="{{ route('products.index') }}" 
+                   class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('products.*') ? 'bg-brand-600 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                    Products & Services
+                </a>
+
                 <div class="pt-4 mt-4 border-t border-slate-800/60">
                     <span class="px-3.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Settings</span>
                 </div>

@@ -52,6 +52,11 @@ class Company extends Model
         return $this->hasMany(Customer::class);
     }
 
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
+
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
@@ -70,7 +75,6 @@ class Company extends Model
         $prefix = $this->invoice_prefix ?: 'INV-';
         $startNumber = $this->invoice_start_number ?: 1;
 
-        // Get count of existing invoices (including soft-deleted)
         $latest = $this->invoices()->withTrashed()->latest('id')->first();
         if (!$latest) {
             return $prefix . str_pad((string)$startNumber, 4, '0', STR_PAD_LEFT);

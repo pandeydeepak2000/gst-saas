@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class MultiTenantSaaSTest extends TestCase
@@ -130,6 +131,41 @@ class MultiTenantSaaSTest extends TestCase
             'id'             => $company->id,
             'tax_mode'       => 'simple',
             'invoice_prefix' => 'ACME/CUSTOM/',
+        ]);
+    }
+    public function test_product_catalog_tenant_isolation_and_creation(): void
+    {
+        $acmeAdmin = User::where('email', 'admin@acme.com')->first();
+        $bharatAdmin = User::where('email', 'admin@bharat.com')->first();
+
+        // 1. Acme Admin verifies Acme products only
+        $this->actingAs($acmeAdmin);
+        $responseAcme = $this->get('/products');
+        $responseAcme->assertStatus(200);
+        $responseAcme->assertSee('Cloud ERP Architecture Consulting');
+        $responseAcme->assertDontSee('Heavy Brass Gate Valve 25mm'); // Bharat product must not leak!
+
+        // 2. Bharat Admin verifies Bharat products only
+        $this->actingAs($bharatAdmin);
+        $responseBharat = $this->get('/products');
+        $responseBharat->assertStatus(200);
+        $responseBharat->assertSee('Heavy Brass Gate Valve 25mm');
+        $responseBharat->assertDontSee('Cloud ERP Architecture Consulting'); // Acme product must not leak!
+
+        // 3. Create new product
+        $createResponse = $this->post('/products', [
+            'name'        => 'Stainless Steel Kitchen Sink',
+            'hsn_sac'     => '7324',
+            'unit'        => 'Pcs',
+            'rate'        => 3200.00,
+            'gst_percent' => 18.00,
+        ]);
+        $createResponse->assertSessionHas('success');
+
+        $this->assertDatabaseHas('products', [
+            'company_id' => $bharatAdmin->company_id,
+            'name'       => 'Stainless Steel Kitchen Sink',
+            'rate'       => 3200.00,
         ]);
     }
 }

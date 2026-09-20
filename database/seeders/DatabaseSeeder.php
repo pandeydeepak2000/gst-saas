@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\Product;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceTransaction;
@@ -70,6 +71,37 @@ class DatabaseSeeder extends Seeder
             'company_id' => $acme->id,
             'phone'      => '+919988776644',
             'is_active'  => true,
+        ]);
+
+                // Acme Products
+        Product::create([
+            'company_id'  => $acme->id,
+            'name'        => 'Cloud ERP Architecture Consulting',
+            'hsn_sac'     => '998313',
+            'unit'        => 'Service',
+            'rate'        => 30000.00,
+            'gst_percent' => 18.00,
+            'description' => 'Multi-Tenant Database Design & Consulting'
+        ]);
+
+        Product::create([
+            'company_id'  => $acme->id,
+            'name'        => 'Annual Cloud Hosting & SSL Security',
+            'hsn_sac'     => '998315',
+            'unit'        => 'Year',
+            'rate'        => 20000.00,
+            'gst_percent' => 18.00,
+            'description' => 'Dedicated cloud server provisioning with 99.9% uptime SLA'
+        ]);
+
+        Product::create([
+            'company_id'  => $acme->id,
+            'name'        => 'Enterprise Security Audit & Vulnerability Assessment',
+            'hsn_sac'     => '998314',
+            'unit'        => 'Job',
+            'rate'        => 25000.00,
+            'gst_percent' => 18.00,
+            'description' => 'Comprehensive penetration testing and compliance audit'
         ]);
 
         // Acme Customers
@@ -245,6 +277,37 @@ class DatabaseSeeder extends Seeder
             'company_id' => $bharat->id,
             'phone'      => '+919431000000',
             'is_active'  => true,
+        ]);
+
+                // Bharat Products
+        Product::create([
+            'company_id'  => $bharat->id,
+            'name'        => 'Heavy Brass Gate Valve 25mm (ISI Mark)',
+            'hsn_sac'     => '8481',
+            'unit'        => 'Pcs',
+            'rate'        => 450.00,
+            'gst_percent' => 18.00,
+            'description' => 'Tested for 16 Bar pressure, forged brass body'
+        ]);
+
+        Product::create([
+            'company_id'  => $bharat->id,
+            'name'        => 'CPVC Pipe 1 Inch (Heavy Duty 3 Meter)',
+            'hsn_sac'     => '3917',
+            'unit'        => 'Length',
+            'rate'        => 220.00,
+            'gst_percent' => 18.00,
+            'description' => 'SDR-11 hot and cold water plumbing pipe'
+        ]);
+
+        Product::create([
+            'company_id'  => $bharat->id,
+            'name'        => 'Brass Bib Cock with Wall Flange',
+            'hsn_sac'     => '8481',
+            'unit'        => 'Pcs',
+            'rate'        => 380.00,
+            'gst_percent' => 18.00,
+            'description' => 'Chrome plated quarter turn water tap'
         ]);
 
         $bharatCust = Customer::create([

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Customer;
+use App\Models\Product;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -49,9 +50,10 @@ class InvoiceController extends Controller
     {
         $company = auth()->user()->company;
         $customers = Customer::orderBy('name')->get();
+        $products = Product::where('is_active', true)->orderBy('name')->get();
         $suggestedNumber = $company->generateNextInvoiceNumber();
 
-        return view('invoices.create', compact('company', 'customers', 'suggestedNumber'));
+        return view('invoices.create', compact('company', 'customers', 'products', 'suggestedNumber'));
     }
 
     public function store(Request $request)
@@ -186,8 +188,10 @@ class InvoiceController extends Controller
         $invoice = Invoice::with(['customer', 'items'])->findOrFail($id);
         $company = auth()->user()->company;
         $customers = Customer::orderBy('name')->get();
+        $products = Product::where('is_active', true)->orderBy('name')->get();
+        $products = Product::where('is_active', true)->orderBy('name')->get();
 
-        return view('invoices.edit', compact('invoice', 'company', 'customers'));
+        return view('invoices.edit', compact('invoice', 'company', 'customers', 'products'));
     }
 
     public function update(Request $request, $id)
