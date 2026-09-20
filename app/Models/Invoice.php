@@ -126,4 +126,56 @@ class Invoice extends Model
 
         $this->saveQuietly();
     }
+
+    /**
+     * Convert Total Amount to Official Indian Currency Words (Statutory GST Requirement)
+     */
+    public function getAmountInWordsAttribute(): string
+    {
+        $number = round((float) $this->total_amount, 2);
+        $no = floor($number);
+        $point = round(($number - $no) * 100);
+        $digits_1 = strlen($no);
+        $i = 0;
+        $str = [];
+        $words = [
+            0 => '', 1 => 'One', 2 => 'Two',
+            3 => 'Three', 4 => 'Four', 5 => 'Five', 6 => 'Six',
+            7 => 'Seven', 8 => 'Eight', 9 => 'Nine',
+            10 => 'Ten', 11 => 'Eleven', 12 => 'Twelve',
+            13 => 'Thirteen', 14 => 'Fourteen',
+            15 => 'Fifteen', 16 => 'Sixteen', 17 => 'Seventeen',
+            18 => 'Eighteen', 19 => 'Nineteen', 20 => 'Twenty',
+            30 => 'Thirty', 40 => 'Forty', 50 => 'Fifty',
+            60 => 'Sixty', 70 => 'Seventy',
+            80 => 'Eighty', 90 => 'Ninety'
+        ];
+        $digits = ['', 'Hundred', 'Thousand', 'Lakh', 'Crore'];
+        while ($i < $digits_1) {
+            $divider = ($i == 2) ? 10 : 100;
+            $number = floor($no % $divider);
+            $no = floor($no / $divider);
+            $i += ($divider == 10) ? 1 : 2;
+            if ($number) {
+                $counter = count($str);
+                $unit = ($counter < count($digits) && $digits[$counter]) ? ' ' . $digits[$counter] : '';
+                $str[] = ($number < 21) 
+                    ? $words[$number] . $unit 
+                    : $words[floor($number / 10) * 10] . ' ' . $words[$number % 10] . $unit;
+            } else {
+                $str[] = null;
+            }
+        }
+        $str = array_reverse(array_filter($str));
+        $result = implode(' ', $str);
+        $paiseText = '';
+        if ($point > 0) {
+            $pWords = ($point < 21) 
+                ? $words[$point] 
+                : $words[floor($point / 10) * 10] . ' ' . $words[$point % 10];
+            $paiseText = ' and ' . trim($pWords) . ' Paise';
+        }
+        $rupees = trim(preg_replace('/\s+/', ' ', $result)) ?: 'Zero';
+        return 'INR ' . $rupees . ' Rupees' . $paiseText . ' Only';
+    }
 }
