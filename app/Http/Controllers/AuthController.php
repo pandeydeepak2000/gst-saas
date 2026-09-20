@@ -6,6 +6,9 @@ use App\Models\Company;
 use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\PlatformSetting;
+use App\Models\EmailOtp;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -59,6 +62,32 @@ class AuthController extends Controller
         return view('auth.register');
     }
 
+        public function sendRegistrationOtp(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+        ], [
+            'email.unique' => 'This business email is already registered. Please sign in instead.',
+        ]);
+
+        $email = strtolower(trim($validated['email']));
+        $otp = EmailOtp::generateFor($email);
+
+        try {
+            Mail::raw("Your GST-SaaS business onboarding verification code is: {$otp}\n\nThis 4-digit code expires in 10 minutes. Do not share this OTP with anyone.", function ($message) use ($email) {
+                $message->to($email)->subject("Your 4-Digit Onboarding Code - GST-SaaS");
+            });
+        } catch (\Throwable $e) {
+            Log::warning("Could not send onboarding OTP to {$email}: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'success'     => true,
+            'message'     => "Verification code sent to {$email}.",
+            'otp_preview' => (app()->isLocal() || config('app.show_demo_accounts')) ? $otp : null,
+        ]);
+    }
+
     public function registerCompany(Request $request)
     {
         $validated = $request->validate([
@@ -70,7 +99,14 @@ class AuthController extends Controller
             'state'        => ['required', 'string', 'max:100'],
             'gstin'        => ['nullable', 'string', 'max:20'],
             'tax_mode'     => ['required', 'in:simple,detailed'],
+            'otp'          => ['required', 'string', 'size:4'],
         ]);
+
+        if (!EmailOtp::verify($validated['email'], $validated['otp'])) {
+            return back()->withInput()->withErrors([
+                'otp' => 'Invalid or expired 4-digit verification code. Please request a new OTP.',
+            ]);
+        }
 
         // Generate clean company slug
         $baseSlug = Str::slug($validated['company_name']);
@@ -95,7 +131,7 @@ class AuthController extends Controller
             'name'                        => $validated['company_name'],
             'slug'                        => $slug,
             'email'                       => $validated['email'],
-            'phone'                       => $validated['phone'],
+            'phone'                       => $validated['phone'] ?? null,
             'state'                       => $validated['state'],
             'gstin'                       => strtoupper($validated['gstin'] ?? ''),
             'tax_mode'                    => $validated['tax_mode'],
@@ -112,7 +148,7 @@ class AuthController extends Controller
             'password'   => Hash::make($validated['password']),
             'company_id' => $company->id,
             'role'       => 'company_admin',
-            'phone'      => $validated['phone'],
+            'phone'      => $validated['phone'] ?? null,
             'is_active'  => true,
         ]);
 

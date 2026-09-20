@@ -14,6 +14,7 @@ class TaxReportController extends Controller
      */
     public function gstr1(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('reports'), 403, 'Access denied: You do not have permission to view GSTR-1 Tax Reports.');
         $company = auth()->user()->company;
         $month = $request->get('month', now()->format('Y-m'));
 

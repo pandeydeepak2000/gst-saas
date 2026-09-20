@@ -159,6 +159,7 @@
                         <span>Dashboard</span>
                     </a>
 
+                    @if($user->hasPermission('invoices'))
                     <a href="{{ route('invoices.index') }}" 
                        class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all {{ request()->routeIs('invoices.*') && !request()->has('tab') && !request()->has('type') ? $theme['sidebar_active'] : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                         <span class="flex items-center gap-3">
@@ -187,27 +188,35 @@
                             {{ \App\Models\Invoice::onlyTrashed()->count() }}
                         </span>
                     </a>
+                    @endif
 
+                    @if($user->hasPermission('customers') || $user->hasPermission('products'))
                     <div class="pt-3 mt-3 border-t border-slate-800">
                         <span class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Business Master</span>
                     </div>
 
+                    @if($user->hasPermission('customers'))
                     <a href="{{ route('customers.index') }}" 
                        class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all {{ request()->routeIs('customers.*') ? $theme['sidebar_active'] : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                         <span>👥</span>
                         <span>Customers & Parties</span>
                     </a>
+                    @endif
 
+                    @if($user->hasPermission('products'))
                     <a href="{{ route('products.index') }}" 
                        class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all {{ request()->routeIs('products.*') ? $theme['sidebar_active'] : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                         <span>📦</span>
                         <span>Products & Services</span>
                     </a>
+                    @endif
+                    @endif
 
                     <div class="pt-3 mt-3 border-t border-slate-800">
                         <span class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Compliance & Settings</span>
                     </div>
 
+                    @if($user->hasPermission('reports'))
                     <a href="{{ route('reports.gstr1') }}" 
                        class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all {{ request()->routeIs('reports.*') ? $theme['sidebar_active'] : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                         <span class="flex items-center gap-3">
@@ -216,16 +225,32 @@
                         </span>
                         <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">CA READY</span>
                     </a>
+                    @endif
 
+                    @if($user->isCompanyAdmin())
+                    <a href="{{ route('team.index') }}" 
+                       class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all {{ request()->routeIs('team.*') ? $theme['sidebar_active'] : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                        <span class="flex items-center gap-3">
+                            <span>🛡️</span>
+                            <span>Team & Staff Roles</span>
+                        </span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
+                            {{ \App\Models\User::where('company_id', $company->id)->where('id', '!=', $user->id)->count() }}
+                        </span>
+                    </a>
+                    @endif
+
+                    @if($user->hasPermission('settings'))
                     <a href="{{ route('settings.index') }}" 
                        class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all {{ request()->routeIs('settings.*') ? $theme['sidebar_active'] : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                         <span>⚙️</span>
                         <span>Company Settings</span>
                     </a>
+                    @endif
 
                     <a href="{{ route('profile.index') }}" 
                        class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all {{ request()->routeIs('profile.*') ? $theme['sidebar_active'] : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
-                        <span>🔐</span>
+                        <span>🔒</span>
                         <span>Profile & Security</span>
                     </a>
                 @endif

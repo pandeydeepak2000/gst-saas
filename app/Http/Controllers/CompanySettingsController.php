@@ -11,12 +11,14 @@ class CompanySettingsController extends Controller
 {
     public function index()
     {
+        abort_if(!auth()->user()->hasPermission('settings'), 403, 'Access denied: You do not have permission to view Company Settings.');
         $company = auth()->user()->company;
         return view('settings.index', compact('company'));
     }
 
     public function update(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('settings'), 403, 'Access denied: You do not have permission to update Company Settings.');
         $company = auth()->user()->company;
 
         $validated = $request->validate([

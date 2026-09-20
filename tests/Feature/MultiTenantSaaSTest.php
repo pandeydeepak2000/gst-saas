@@ -569,6 +569,7 @@ class MultiTenantSaaSTest extends TestCase
             'state'                 => 'Maharashtra',
             'gstin'                 => '27ABCDE1234F1Z5',
             'tax_mode'              => 'detailed',
+            'otp'                   => \App\Models\EmailOtp::generateFor('kavya@techsolutions.com'),
         ]);
         $regResponse->assertRedirect('/pending-approval');
 
@@ -601,5 +602,100 @@ class MultiTenantSaaSTest extends TestCase
         $this->actingAs($freshUser);
         $activeDash = $this->get('/dashboard');
         $activeDash->assertStatus(200);
+    }
+
+    public function test_onboarding_4_digit_otp_generation_and_validation(): void
+    {
+        // 1. Requesting OTP for already taken email returns validation error
+        $takenResp = $this->postJson('/register/send-otp', ['email' => 'admin@acme.com']);
+        $takenResp->assertStatus(422);
+
+        // 2. Requesting OTP for valid new business email generates 4-digit code
+        $otpResp = $this->postJson('/register/send-otp', ['email' => 'founder@newventure.com']);
+        $otpResp->assertStatus(200);
+        $otpResp->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('email_otps', [
+            'email' => 'founder@newventure.com',
+        ]);
+
+        $otpRecord = \App\Models\EmailOtp::where('email', 'founder@newventure.com')->first();
+        $this->assertEquals(4, strlen($otpRecord->otp));
+
+        // 3. Registering with invalid OTP fails
+        $failReg = $this->post('/register', [
+            'company_name'          => 'New Venture Pvt Ltd',
+            'admin_name'            => 'Sameer Roy',
+            'email'                 => 'founder@newventure.com',
+            'password'              => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'state'                 => 'Karnataka',
+            'tax_mode'              => 'simple',
+            'otp'                   => '9999', // Wrong!
+        ]);
+        $failReg->assertSessionHasErrors('otp');
+
+        // 4. Registering with correct 4-digit OTP succeeds
+        $passReg = $this->post('/register', [
+            'company_name'          => 'New Venture Pvt Ltd',
+            'admin_name'            => 'Sameer Roy',
+            'email'                 => 'founder@newventure.com',
+            'password'              => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'state'                 => 'Karnataka',
+            'tax_mode'              => 'simple',
+            'otp'                   => $otpRecord->otp,
+        ]);
+        $passReg->assertRedirect(route('dashboard'));
+        $this->assertDatabaseHas('users', ['email' => 'founder@newventure.com']);
+    }
+
+    public function test_tenant_staff_creation_and_granular_module_permission_enforcement(): void
+    {
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($admin);
+
+        // 1. Company Admin accesses Team & Staff page
+        $teamView = $this->get('/team');
+        $teamView->assertStatus(200);
+        $teamView->assertSee('Role-Based Access');
+
+        // 2. Company Admin creates a staff member with LIMITED permissions (invoices & customers only)
+        $createStaffResp = $this->post('/team', [
+            'name'        => 'Priya Operator',
+            'email'       => 'priya@acme.com',
+            'password'    => 'PriyaSecret123',
+            'phone'       => '+919123456780',
+            'permissions' => ['invoices', 'customers'],
+        ]);
+        $createStaffResp->assertSessionHas('success');
+
+        $staff = User::where('email', 'priya@acme.com')->first();
+        $this->assertNotNull($staff);
+        $this->assertEquals('staff', $staff->role);
+        $this->assertTrue($staff->hasPermission('invoices'));
+        $this->assertTrue($staff->hasPermission('customers'));
+        $this->assertFalse($staff->hasPermission('settings'));
+        $this->assertFalse($staff->hasPermission('reports'));
+
+        // 3. Staff logs in
+        $this->actingAs($staff);
+
+        // Allowed modules work
+        $invoiceResp = $this->get('/invoices');
+        $invoiceResp->assertStatus(200);
+
+        $customerResp = $this->get('/customers');
+        $customerResp->assertStatus(200);
+
+        // Disallowed modules return 403 Forbidden
+        $settingsResp = $this->get('/settings');
+        $settingsResp->assertStatus(403);
+
+        $reportResp = $this->get('/reports/gstr1');
+        $reportResp->assertStatus(403);
+
+        $teamResp = $this->get('/team');
+        $teamResp->assertStatus(403);
     }
 }

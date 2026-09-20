@@ -56,10 +56,11 @@
                 </div>
             </div>
 
-            <!-- Quick Demo Accounts Switcher -->
+            <!-- Quick Demo Accounts Switcher (Safe for Live cPanel) -->
+            @if(config('app.show_demo_accounts', true))
             <div class="mt-8 pt-6 border-t border-slate-800">
                 <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">⚡ 1-Click Demo Fill:</span>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     <button type="button" @click="email = 'admin@acme.com'; password = 'password'" 
                             class="text-left p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-xs transition-colors">
                         <div class="font-bold text-white text-[11px] truncate">Acme Info</div>
@@ -70,13 +71,16 @@
                         <div class="font-bold text-white text-[11px] truncate">Bharat Trade</div>
                         <div class="text-[9px] text-emerald-300 truncate">Simple 18% GST</div>
                     </button>
+                    @if(config('app.show_superadmin_demo', false) || app()->isLocal())
                     <button type="button" @click="email = 'superadmin@gstsaas.com'; password = 'password'" 
-                            class="text-left p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-amber-500/40 text-xs transition-colors">
+                            class="text-left p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-amber-500/40 text-xs transition-colors col-span-2 sm:col-span-1">
                         <div class="font-bold text-amber-300 text-[11px] truncate">👑 Super Admin</div>
                         <div class="text-[9px] text-amber-200/70 truncate">Platform Control</div>
                     </button>
+                    @endif
                 </div>
             </div>
+            @endif
         </div>
 
         <!-- Right Form Panel (7 Cols) -->

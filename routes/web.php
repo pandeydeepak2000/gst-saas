@@ -12,6 +12,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicInvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\TaxReportController;
+use App\Http\Controllers\StaffController;
 
 // Public Client Portal (Zero Friction Magic Link - No Login Required)
 Route::get('/view/{uuid}', [PublicInvoiceController::class, 'show'])->name('public.invoice.show');
@@ -23,6 +24,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register/send-otp', [AuthController::class, 'sendRegistrationOtp'])->name('register.send_otp');
     Route::post('/register', [AuthController::class, 'registerCompany']);
 
     Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
@@ -90,6 +92,13 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/request-email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.request_email_change');
     Route::post('/profile/signature', [ProfileController::class, 'updateSignature'])->name('profile.signature');
+
+    // Tenant Team & Staff Access Control (Company Scoped)
+    Route::get('/team', [StaffController::class, 'index'])->name('team.index');
+    Route::post('/team', [StaffController::class, 'store'])->name('team.store');
+    Route::put('/team/{id}', [StaffController::class, 'update'])->name('team.update');
+    Route::post('/team/{id}/toggle-status', [StaffController::class, 'toggleStatus'])->name('team.toggle_status');
+    Route::delete('/team/{id}', [StaffController::class, 'destroy'])->name('team.destroy');
 
     // Super Admin Master Control Panel
     Route::middleware(['role:super_admin'])->prefix('super-admin')->group(function () {

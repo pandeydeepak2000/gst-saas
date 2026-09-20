@@ -118,6 +118,9 @@ return [
     |
     */
 
+    'show_demo_accounts' => env('SHOW_DEMO_ACCOUNTS', true),
+    'show_superadmin_demo' => env('SHOW_SUPERADMIN_DEMO', false),
+
     'maintenance' => [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),

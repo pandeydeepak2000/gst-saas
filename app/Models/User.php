@@ -17,6 +17,7 @@ class User extends Authenticatable
         'password',
         'company_id',
         'role', // 'super_admin', 'company_admin', 'staff', 'accountant'
+        'permissions',
         'phone',
         'is_active',
     ];
@@ -32,6 +33,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'permissions' => 'array',
         ];
     }
 
@@ -63,5 +65,19 @@ class User extends Authenticatable
     public function canManageSettings(): bool
     {
         return in_array($this->role, ['super_admin', 'company_admin']);
+    }
+
+    public function hasPermission(string $module): bool
+    {
+        if ($this->isSuperAdmin() || $this->isCompanyAdmin()) {
+            return true;
+        }
+
+        if (!$this->is_active) {
+            return false;
+        }
+
+        $perms = $this->permissions ?? [];
+        return in_array($module, $perms);
     }
 }
