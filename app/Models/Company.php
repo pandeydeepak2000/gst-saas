@@ -23,6 +23,7 @@ class Company extends Model
         'pan',
         'logo_path',
         'signature_path',
+        'digital_signature_text',
         'tax_mode', // 'simple' or 'detailed'
         'invoice_prefix',
         'invoice_start_number',

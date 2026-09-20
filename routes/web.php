@@ -89,6 +89,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::put('/profile/info', [ProfileController::class, 'updateInfo'])->name('profile.info');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/request-email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.request_email_change');
+    Route::post('/profile/signature', [ProfileController::class, 'updateSignature'])->name('profile.signature');
 
     // Super Admin Master Control Panel
     Route::middleware(['role:super_admin'])->prefix('super-admin')->group(function () {

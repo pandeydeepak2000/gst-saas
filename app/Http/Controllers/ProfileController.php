@@ -7,6 +7,7 @@ use App\Models\EmailChangeRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -125,5 +126,46 @@ class ProfileController extends Controller
         ActivityLog::log('security', 'auth', "User '{$user->name}' changed their password.");
 
         return back()->with('success', 'Your password has been changed successfully!');
+    }
+
+    public function updateSignature(Request $request)
+    {
+        $user = auth()->user();
+        $company = $user->company;
+
+        if (!$company) {
+            return back()->with('warning', 'Company profile not found.');
+        }
+
+        $validated = $request->validate([
+            'signature_file'         => ['nullable', 'image', 'mimes:jpeg,png,jpg,svg', 'max:2048'],
+            'digital_signature_text' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if ($request->boolean('remove_signature')) {
+            if ($company->signature_path) {
+                Storage::disk('public')->delete($company->signature_path);
+            }
+            $company->update([
+                'signature_path'         => null,
+                'digital_signature_text' => null,
+            ]);
+            ActivityLog::log('update', 'signature', "Cleared company invoice signature.");
+            return back()->with('success', 'Signature removed. Invoices will not display any signature placeholder.');
+        }
+
+        if ($request->hasFile('signature_file')) {
+            if ($company->signature_path) {
+                Storage::disk('public')->delete($company->signature_path);
+            }
+            $path = $request->file('signature_file')->store('signatures', 'public');
+            $company->signature_path = $path;
+        }
+
+        $company->digital_signature_text = $validated['digital_signature_text'] ?? null;
+        $company->save();
+
+        ActivityLog::log('update', 'signature', "Updated company invoice signature details.");
+        return back()->with('success', 'Invoice signature and digital sign-off updated successfully!');
     }
 }
