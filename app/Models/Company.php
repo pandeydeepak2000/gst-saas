@@ -32,6 +32,13 @@ class Company extends Model
         'bank_ifsc',
         'bank_branch',
         'upi_id',
+        'upi_name',
+        'enable_upi_qr',
+        'razorpay_key_id',
+        'razorpay_key_secret',
+        'enable_razorpay',
+        'whatsapp_number',
+        'whatsapp_template',
         'terms_and_conditions',
         'mail_host',
         'mail_port',
@@ -47,6 +54,8 @@ class Company extends Model
 
     protected $casts = [
         'allow_manual_invoice_number' => 'boolean',
+        'enable_upi_qr' => 'boolean',
+        'enable_razorpay' => 'boolean',
         'is_active' => 'boolean',
         'invoice_start_number' => 'integer',
     ];

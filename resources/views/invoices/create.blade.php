@@ -1,4 +1,4 @@
-<x-app-layout header="Create GST Tax Invoice">
+﻿<x-app-layout header="Create GST Tax Invoice">
     <div class="max-w-6xl mx-auto space-y-6" x-data="invoiceBuilder()">
         
         <form action="{{ route('invoices.store') }}" method="POST" @submit="validateForm($event)" class="space-y-6">
@@ -68,7 +68,14 @@
                 </div>
 
                 <!-- Secondary Row -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Document Type</label>
+                        <select name="type" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="tax_invoice" selected>Official GST Tax Invoice</option>
+                            <option value="proforma">Proforma / Estimate / Quotation</option>
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Supply Region *</label>
                         <select name="sale_type" x-model="saleType" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">

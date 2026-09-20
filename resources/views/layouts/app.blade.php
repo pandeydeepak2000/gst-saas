@@ -1,15 +1,14 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $title ?? 'Dashboard' }} | GST-SaaS Cloud ERP</title>
-    
+    <title>{{ $title ?? 'GST-SaaS - Multi-Tenant Billing Platform' }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -36,13 +35,8 @@
             }
         }
     </script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
     <style>
         [x-cloak] { display: none !important; }
-        @media print {
-            .no-print { display: none !important; }
-        }
     </style>
 </head>
 <body class="h-full font-sans antialiased text-slate-800" x-data="{ mobileSidebarOpen: false }">
@@ -88,7 +82,7 @@
             </div>
             @endif
 
-                        <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+            <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
                 @if(auth()->user()->isSuperAdmin())
                 <a href="{{ route('superadmin.index') }}" 
                    class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-bold transition-colors bg-gradient-to-r from-rose-600 to-indigo-600 text-white shadow-md mb-2">
@@ -114,12 +108,23 @@
                     + Create Invoice
                 </a>
 
+                <a href="{{ route('invoices.index', ['tab' => 'proforma']) }}" 
+                   class="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->get('tab') === 'proforma' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                    <span>Proforma / Quotes</span>
+                    @php $profCount = \App\Models\Invoice::where('type', 'proforma')->count(); @endphp
+                    @if($profCount > 0)
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono font-bold">
+                            {{ $profCount }}
+                        </span>
+                    @endif
+                </a>
+
                 <a href="{{ route('invoices.index', ['tab' => 'trash']) }}" 
-                   class="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->get('tab') === 'trash' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                   class="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->get('tab') === 'trash' ? 'bg-rose-600 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                     <span>Trash Bin</span>
                     @php $trashCount = \App\Models\Invoice::onlyTrashed()->count(); @endphp
                     @if($trashCount > 0)
-                        <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono font-bold">
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono font-bold">
                             {{ $trashCount }}
                         </span>
                     @endif
@@ -136,13 +141,23 @@
                 </a>
 
                 <div class="pt-4 mt-4 border-t border-slate-800/60">
+                    <span class="px-3.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Tax & Compliance</span>
+                </div>
+
+                <a href="{{ route('reports.gstr1') }}" 
+                   class="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('reports.*') ? 'bg-brand-600 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                    <span>📊 GSTR-1 Tax Reports</span>
+                    <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono font-bold">CA READY</span>
+                </a>
+
+                <div class="pt-4 mt-4 border-t border-slate-800/60">
                     <span class="px-3.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Settings</span>
                 </div>
 
                 <a href="{{ route('settings.index') }}" 
                    class="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('settings.*') ? 'bg-brand-600 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                     <span>Company Settings</span>
-                    <span class="text-[10px] text-amber-300 font-mono">Tax & Prefix</span>
+                    <span class="text-[10px] text-amber-300 font-mono">Gateway & UPI</span>
                 </a>
 
                 <a href="{{ route('profile.index') }}" 
@@ -158,9 +173,9 @@
                         <div class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center font-bold text-white text-sm">
                             {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                         </div>
-                        <div class="truncate">
-                            <div class="text-sm font-semibold text-white truncate max-w-[120px]">{{ auth()->user()->name }}</div>
-                            <div class="text-xs text-slate-400 capitalize">{{ str_replace('_', ' ', auth()->user()->role) }}</div>
+                        <div class="truncate max-w-[130px]">
+                            <div class="text-sm font-semibold text-white truncate">{{ auth()->user()->name }}</div>
+                            <div class="text-xs text-slate-400 truncate">{{ auth()->user()->email }}</div>
                         </div>
                     </div>
                     <form action="{{ route('logout') }}" method="POST">
@@ -172,7 +187,10 @@
                 </div>
             </div>
         </aside>
+
         <!-- Main Content Column -->
+        <div class="flex-1 flex flex-col min-w-0">
+            
             @if(session('impersonator_id'))
             <div class="bg-gradient-to-r from-rose-600 to-purple-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md">
                 <div class="flex items-center gap-2">
@@ -187,14 +205,15 @@
                 </form>
             </div>
             @endif
-        <div class="flex-1 flex flex-col min-w-0">
-            
+
             <header class="h-16 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between shadow-sm sticky top-0 z-30">
                 <div class="flex items-center gap-4">
                     <button @click="mobileSidebarOpen = true" class="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                     </button>
-                    <h1 class="text-lg font-bold text-slate-900 tracking-tight">{{ $header ?? 'Dashboard' }}</h1>
+                    <h2 class="font-bold text-slate-800 text-base sm:text-lg">
+                        {{ $header ?? 'GST Billing & ERP Portal' }}
+                    </h2>
                 </div>
 
                 <div class="flex items-center gap-3">
@@ -248,7 +267,8 @@
             </div>
 
             <main class="flex-1 px-4 sm:px-8 pb-12">
-                {{ $slot }}
+                {{ $slot ?? '' }}
+                @yield('content')
             </main>
         </div>
     </div>

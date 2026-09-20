@@ -50,12 +50,26 @@ class CompanySettingsController extends Controller
             'mail_from_address'           => ['nullable', 'email', 'max:255'],
             'mail_from_name'              => ['nullable', 'string', 'max:255'],
 
-            // Bank & Payment QR
+            // Bank Details
             'bank_name'                   => ['nullable', 'string', 'max:150'],
             'bank_account_number'         => ['nullable', 'string', 'max:50'],
             'bank_ifsc'                   => ['nullable', 'string', 'max:20'],
             'bank_branch'                 => ['nullable', 'string', 'max:100'],
+
+            // Dynamic Zero-Fee UPI Payment QR Settings
             'upi_id'                      => ['nullable', 'string', 'max:100'],
+            'upi_name'                    => ['nullable', 'string', 'max:150'],
+            'enable_upi_qr'               => ['nullable', 'boolean'],
+
+            // Dedicated Razorpay Online Payment Gateway
+            'razorpay_key_id'             => ['nullable', 'string', 'max:255'],
+            'razorpay_key_secret'         => ['nullable', 'string', 'max:255'],
+            'enable_razorpay'             => ['nullable', 'boolean'],
+
+            // Dedicated WhatsApp Business Integration
+            'whatsapp_number'             => ['nullable', 'string', 'max:25'],
+            'whatsapp_template'           => ['nullable', 'string'],
+
             'terms_and_conditions'        => ['nullable', 'string'],
 
             // Files
@@ -64,6 +78,9 @@ class CompanySettingsController extends Controller
         ]);
 
         $validated['allow_manual_invoice_number'] = $request->has('allow_manual_invoice_number');
+        $validated['enable_upi_qr'] = $request->has('enable_upi_qr');
+        $validated['enable_razorpay'] = $request->has('enable_razorpay');
+
         if (!empty($validated['gstin'])) {
             $validated['gstin'] = strtoupper($validated['gstin']);
         }
@@ -89,12 +106,15 @@ class CompanySettingsController extends Controller
         if (empty($validated['mail_password'])) {
             unset($validated['mail_password']);
         }
+        if (empty($validated['razorpay_key_secret'])) {
+            unset($validated['razorpay_key_secret']);
+        }
 
         $company->update($validated);
 
-        ActivityLog::log('update', 'settings', "Updated company settings, SMTP credentials, and invoice template.");
+        ActivityLog::log('update', 'settings', "Updated company settings, payment gateways, UPI QR, WhatsApp, and SMTP credentials.");
 
-        return back()->with('success', 'Company preferences, dedicated SMTP, and invoice settings updated successfully!');
+        return back()->with('success', 'Company preferences, payment integrations, and billing settings updated successfully!');
     }
 
     public function sendTestMail(Request $request)

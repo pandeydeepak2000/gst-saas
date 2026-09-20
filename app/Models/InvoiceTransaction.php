@@ -11,10 +11,13 @@ class InvoiceTransaction extends Model
     use HasFactory;
 
     protected $fillable = [
+        'company_id',
         'invoice_id',
         'gateway',
+        'payment_method',
         'transaction_id',
         'amount',
+        'notes',
         'paid_at',
     ];
 
@@ -26,5 +29,10 @@ class InvoiceTransaction extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 }

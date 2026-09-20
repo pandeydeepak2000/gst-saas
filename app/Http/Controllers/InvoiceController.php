@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\InvoiceTransaction;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class InvoiceController extends Controller
 {
@@ -26,6 +28,8 @@ class InvoiceController extends Controller
             $query->where('status', 'unpaid');
         } elseif ($tab === 'partially_paid') {
             $query->where('status', 'partially_paid');
+        } elseif ($tab === 'proforma') {
+            $query->where('type', 'proforma');
         }
 
         if ($request->filled('search')) {
@@ -42,8 +46,9 @@ class InvoiceController extends Controller
 
         $invoices = $query->latest('id')->paginate(15);
         $trashCount = Invoice::onlyTrashed()->count();
+        $proformaCount = Invoice::where('type', 'proforma')->count();
 
-        return view('invoices.index', compact('invoices', 'tab', 'trashCount'));
+        return view('invoices.index', compact('invoices', 'tab', 'trashCount', 'proformaCount'));
     }
 
     public function create()
@@ -62,7 +67,6 @@ class InvoiceController extends Controller
 
         $validated = $request->validate([
             'customer_id'    => ['required', 'exists:customers,id'],
-            // Company can edit invoice number freely!
             'invoice_number' => [
                 'required',
                 'string',
@@ -71,6 +75,7 @@ class InvoiceController extends Controller
                     ->where('company_id', $company->id)
                     ->whereNull('deleted_at')
             ],
+            'type'           => ['nullable', 'in:tax_invoice,proforma'],
             'invoice_date'   => ['required', 'date'],
             'due_date'       => ['nullable', 'date', 'after_or_equal:invoice_date'],
             'sale_type'      => ['required', 'in:LOCAL,CENTRAL'],
@@ -79,31 +84,21 @@ class InvoiceController extends Controller
             'payment_method' => ['nullable', 'string', 'max:50'],
             'notes'          => ['nullable', 'string'],
 
-            // Items validation
-            'items'                 => ['required', 'array', 'min:1'],
+            'items'                        => ['required', 'array', 'min:1'],
             'items.*.description'          => ['required', 'string'],
             'items.*.domain_name'          => ['nullable', 'string', 'max:255'],
             'items.*.service_period_start' => ['nullable', 'date'],
             'items.*.service_period_end'   => ['nullable', 'date'],
             'items.*.billing_cycle'        => ['nullable', 'string', 'max:50'],
             'items.*.hsn_sac'              => ['nullable', 'string', 'max:20'],
-            'items.*.quantity'      => ['required', 'numeric', 'min:0.01'],
-            'items.*.unit'          => ['required', 'string', 'max:20'],
-            'items.*.rate'          => ['required', 'numeric', 'min:0'],
-            'items.*.gst_percent'   => ['required', 'numeric', 'min:0', 'max:100'],
-        ], [
-            'invoice_number.unique' => 'This invoice number already exists for your company. Please choose another number.',
-            'items.min' => 'Please add at least one line item to the invoice.',
+            'items.*.quantity'             => ['required', 'numeric', 'min:0.01'],
+            'items.*.unit'                 => ['required', 'string', 'max:20'],
+            'items.*.rate'                 => ['required', 'numeric', 'min:0'],
+            'items.*.gst_percent'          => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
 
         DB::beginTransaction();
         try {
-            $totalTaxable = 0;
-            $totalCgst = 0;
-            $totalSgst = 0;
-            $totalIgst = 0;
-            $grandTotal = 0;
-
             $isLocal = ($validated['sale_type'] === 'LOCAL');
 
             $invoice = Invoice::create([
@@ -111,6 +106,8 @@ class InvoiceController extends Controller
                 'customer_id'     => $validated['customer_id'],
                 'created_by'      => auth()->id(),
                 'invoice_number'  => trim($validated['invoice_number']),
+                'public_uuid'     => (string) Str::uuid(),
+                'type'            => $validated['type'] ?? 'tax_invoice',
                 'invoice_date'    => $validated['invoice_date'],
                 'due_date'        => $validated['due_date'],
                 'sale_type'       => $validated['sale_type'],
@@ -118,7 +115,20 @@ class InvoiceController extends Controller
                 'status'          => $validated['status'],
                 'payment_method'  => $validated['payment_method'] ?? null,
                 'notes'           => $validated['notes'] ?? null,
+                'taxable_amount'  => 0,
+                'cgst_amount'     => 0,
+                'sgst_amount'     => 0,
+                'igst_amount'     => 0,
+                'total_amount'    => 0,
+                'paid_amount'     => 0,
+                'balance_amount'  => 0,
             ]);
+
+            $totalTaxable = 0;
+            $totalCgst = 0;
+            $totalSgst = 0;
+            $totalIgst = 0;
+            $grandTotal = 0;
 
             foreach ($validated['items'] as $itemData) {
                 $qty = (float)$itemData['quantity'];
@@ -134,7 +144,7 @@ class InvoiceController extends Controller
 
                 if ($isLocal) {
                     $cgst = round($taxAmount / 2, 2);
-                    $sgst = round($taxAmount - $cgst, 2); // Exact split without fractional penny loss
+                    $sgst = round($taxAmount - $cgst, 2);
                 } else {
                     $igst = $taxAmount;
                 }
@@ -155,16 +165,21 @@ class InvoiceController extends Controller
                     'service_period_end'   => $itemData['service_period_end'] ?? null,
                     'billing_cycle'        => $itemData['billing_cycle'] ?? null,
                     'hsn_sac'              => $itemData['hsn_sac'] ?? null,
-                    'quantity'       => $qty,
-                    'unit'           => $itemData['unit'] ?? 'Pcs',
-                    'rate'           => $rate,
-                    'gst_percent'    => $gstRate,
-                    'taxable_amount' => $taxable,
-                    'cgst_amount'    => $cgst,
-                    'sgst_amount'    => $sgst,
-                    'igst_amount'    => $igst,
-                    'line_total'     => $lineTotal,
+                    'quantity'             => $qty,
+                    'unit'                 => $itemData['unit'] ?? 'Pcs',
+                    'rate'                 => $rate,
+                    'gst_percent'          => $gstRate,
+                    'taxable_amount'       => $taxable,
+                    'cgst_amount'          => $cgst,
+                    'sgst_amount'          => $sgst,
+                    'igst_amount'          => $igst,
+                    'line_total'           => $lineTotal,
                 ]);
+            }
+
+            $paidAmount = 0;
+            if ($validated['status'] === 'paid') {
+                $paidAmount = $grandTotal;
             }
 
             $invoice->update([
@@ -173,7 +188,23 @@ class InvoiceController extends Controller
                 'sgst_amount'    => $totalSgst,
                 'igst_amount'    => $totalIgst,
                 'total_amount'   => $grandTotal,
+                'paid_amount'    => $paidAmount,
+                'balance_amount' => max(0, $grandTotal - $paidAmount),
             ]);
+
+            // If marked as paid on creation, record a transaction
+            if ($paidAmount > 0) {
+                InvoiceTransaction::create([
+                    'company_id'     => $company->id,
+                    'invoice_id'     => $invoice->id,
+                    'gateway'        => $invoice->payment_method ?: 'Cash',
+                    'payment_method' => strtolower($invoice->payment_method ?: 'cash'),
+                    'transaction_id' => 'INIT-' . strtoupper(uniqid()),
+                    'amount'         => $paidAmount,
+                    'paid_at'        => now(),
+                    'notes'          => 'Initial payment recorded at creation',
+                ]);
+            }
 
             ActivityLog::log('create', 'invoice', "Created Invoice #{$invoice->invoice_number} for ₹" . number_format($grandTotal, 2), $invoice->id);
             DB::commit();
@@ -187,8 +218,53 @@ class InvoiceController extends Controller
 
     public function show($id)
     {
-        $invoice = Invoice::withTrashed()->with(['customer', 'items', 'creator'])->findOrFail($id);
-        return view('invoices.show', compact('invoice'));
+        $invoice = Invoice::withTrashed()
+            ->with(['customer', 'items', 'creator', 'transactions', 'company'])
+            ->findOrFail($id);
+
+        $company = $invoice->company;
+
+        // Dynamic WhatsApp Share Link
+        $cleanPhone = preg_replace('/[^0-9]/', '', $invoice->customer?->phone ?? '');
+        if (strlen($cleanPhone) === 10) {
+            $cleanPhone = '91' . $cleanPhone;
+        }
+
+        $publicUrl = route('public.invoice.show', $invoice->public_uuid);
+
+        $defaultTemplate = "Dear {customer_name},\nYour invoice #{invoice_number} from {company_name} for ₹{total_amount} is generated.\nBalance Due: ₹{balance_amount}\nDue Date: {due_date}\n\nView & Pay Online:\n{public_url}\n\nThank you for your business!";
+        $template = $company->whatsapp_template ?: $defaultTemplate;
+
+        $message = str_replace(
+            ['{customer_name}', '{invoice_number}', '{total_amount}', '{balance_amount}', '{due_date}', '{public_url}', '{company_name}'],
+            [
+                $invoice->customer?->name,
+                $invoice->invoice_number,
+                number_format($invoice->total_amount, 2),
+                number_format($invoice->balance_amount, 2),
+                $invoice->due_date ? $invoice->due_date->format('d-M-Y') : 'Due on Receipt',
+                $publicUrl,
+                $company->name
+            ],
+            $template
+        );
+
+        $whatsappUrl = !empty($cleanPhone)
+            ? "https://wa.me/{$cleanPhone}?text=" . rawurlencode($message)
+            : "https://wa.me/?text=" . rawurlencode($message);
+
+        // Dynamic Zero-Fee UPI Payment QR Code
+        $upiUrl = null;
+        if ($company->enable_upi_qr && !empty($company->upi_id) && $invoice->balance_amount > 0) {
+            $pa = rawurlencode($company->upi_id);
+            $pn = rawurlencode($company->upi_name ?: $company->name);
+            $am = number_format($invoice->balance_amount, 2, '.', '');
+            $tr = rawurlencode($invoice->invoice_number);
+            $tn = rawurlencode('Invoice ' . $invoice->invoice_number);
+            $upiUrl = "upi://pay?pa={$pa}&pn={$pn}&am={$am}&tr={$tr}&tn={$tn}&cu=INR";
+        }
+
+        return view('invoices.show', compact('invoice', 'company', 'whatsappUrl', 'upiUrl', 'publicUrl'));
     }
 
     public function edit($id)
@@ -196,7 +272,6 @@ class InvoiceController extends Controller
         $invoice = Invoice::with(['customer', 'items'])->findOrFail($id);
         $company = auth()->user()->company;
         $customers = Customer::orderBy('name')->get();
-        $products = Product::where('is_active', true)->orderBy('name')->get();
         $products = Product::where('is_active', true)->orderBy('name')->get();
 
         return view('invoices.edit', compact('invoice', 'company', 'customers', 'products'));
@@ -218,6 +293,7 @@ class InvoiceController extends Controller
                     ->whereNull('deleted_at')
                     ->ignore($invoice->id)
             ],
+            'type'           => ['nullable', 'in:tax_invoice,proforma'],
             'invoice_date'   => ['required', 'date'],
             'due_date'       => ['nullable', 'date', 'after_or_equal:invoice_date'],
             'sale_type'      => ['required', 'in:LOCAL,CENTRAL'],
@@ -226,17 +302,17 @@ class InvoiceController extends Controller
             'payment_method' => ['nullable', 'string', 'max:50'],
             'notes'          => ['nullable', 'string'],
 
-            'items'                 => ['required', 'array', 'min:1'],
+            'items'                        => ['required', 'array', 'min:1'],
             'items.*.description'          => ['required', 'string'],
             'items.*.domain_name'          => ['nullable', 'string', 'max:255'],
             'items.*.service_period_start' => ['nullable', 'date'],
             'items.*.service_period_end'   => ['nullable', 'date'],
             'items.*.billing_cycle'        => ['nullable', 'string', 'max:50'],
             'items.*.hsn_sac'              => ['nullable', 'string', 'max:20'],
-            'items.*.quantity'      => ['required', 'numeric', 'min:0.01'],
-            'items.*.unit'          => ['required', 'string', 'max:20'],
-            'items.*.rate'          => ['required', 'numeric', 'min:0'],
-            'items.*.gst_percent'   => ['required', 'numeric', 'min:0', 'max:100'],
+            'items.*.quantity'             => ['required', 'numeric', 'min:0.01'],
+            'items.*.unit'                 => ['required', 'string', 'max:20'],
+            'items.*.rate'                 => ['required', 'numeric', 'min:0'],
+            'items.*.gst_percent'          => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
 
         DB::beginTransaction();
@@ -246,6 +322,7 @@ class InvoiceController extends Controller
             $invoice->update([
                 'customer_id'     => $validated['customer_id'],
                 'invoice_number'  => trim($validated['invoice_number']),
+                'type'            => $validated['type'] ?? $invoice->type,
                 'invoice_date'    => $validated['invoice_date'],
                 'due_date'        => $validated['due_date'],
                 'sale_type'       => $validated['sale_type'],
@@ -255,7 +332,6 @@ class InvoiceController extends Controller
                 'notes'           => $validated['notes'] ?? null,
             ]);
 
-            // Rebuild items cleanly
             $invoice->items()->delete();
 
             $totalTaxable = 0;
@@ -299,15 +375,15 @@ class InvoiceController extends Controller
                     'service_period_end'   => $itemData['service_period_end'] ?? null,
                     'billing_cycle'        => $itemData['billing_cycle'] ?? null,
                     'hsn_sac'              => $itemData['hsn_sac'] ?? null,
-                    'quantity'       => $qty,
-                    'unit'           => $itemData['unit'] ?? 'Pcs',
-                    'rate'           => $rate,
-                    'gst_percent'    => $gstRate,
-                    'taxable_amount' => $taxable,
-                    'cgst_amount'    => $cgst,
-                    'sgst_amount'    => $sgst,
-                    'igst_amount'    => $igst,
-                    'line_total'     => $lineTotal,
+                    'quantity'             => $qty,
+                    'unit'                 => $itemData['unit'] ?? 'Pcs',
+                    'rate'                 => $rate,
+                    'gst_percent'          => $gstRate,
+                    'taxable_amount'       => $taxable,
+                    'cgst_amount'          => $cgst,
+                    'sgst_amount'          => $sgst,
+                    'igst_amount'          => $igst,
+                    'line_total'           => $lineTotal,
                 ]);
             }
 
@@ -319,6 +395,8 @@ class InvoiceController extends Controller
                 'total_amount'   => $grandTotal,
             ]);
 
+            $invoice->recalculatePaymentStatus();
+
             ActivityLog::log('update', 'invoice', "Updated Invoice #{$invoice->invoice_number} details & items.", $invoice->id);
             DB::commit();
 
@@ -329,11 +407,62 @@ class InvoiceController extends Controller
         }
     }
 
+    /**
+     * 1-Click Convert Proforma Quotation to Official Tax Invoice
+     */
+    public function convertToTaxInvoice($id)
+    {
+        $invoice = Invoice::findOrFail($id);
+        $company = auth()->user()->company;
+
+        if ($invoice->type !== 'proforma') {
+            return back()->with('info', 'This invoice is already an official Tax Invoice.');
+        }
+
+        $oldNumber = $invoice->invoice_number;
+        $newNumber = $company->generateNextInvoiceNumber();
+
+        $invoice->update([
+            'type'           => 'tax_invoice',
+            'invoice_number' => $newNumber,
+        ]);
+
+        ActivityLog::log('update', 'invoice', "Converted Proforma #{$oldNumber} into official Tax Invoice #{$newNumber}.", $invoice->id);
+
+        return back()->with('success', "Proforma invoice successfully converted to official Tax Invoice #{$newNumber}!");
+    }
+
+    /**
+     * Quick 1-click mark as fully paid
+     */
+    public function markAsPaid(Request $request, $id)
+    {
+        $invoice = Invoice::findOrFail($id);
+        $balance = $invoice->balance_amount > 0 ? $invoice->balance_amount : $invoice->total_amount;
+
+        InvoiceTransaction::create([
+            'company_id'     => $invoice->company_id,
+            'invoice_id'     => $invoice->id,
+            'gateway'        => 'Manual Full Settlement',
+            'payment_method' => $request->payment_method ?? 'cash',
+            'transaction_id' => 'FULL-' . strtoupper(uniqid()),
+            'amount'         => $balance,
+            'paid_at'        => now(),
+            'notes'          => 'Marked as fully paid by admin',
+        ]);
+
+        $invoice->recalculatePaymentStatus();
+
+        ActivityLog::log('create', 'payment', "Marked Invoice #{$invoice->invoice_number} as fully paid.", $invoice->id);
+
+        return back()->with('success', "Invoice #{$invoice->invoice_number} marked as fully paid!");
+    }
+
     public function destroy($id)
     {
         $invoice = Invoice::findOrFail($id);
         $num = $invoice->invoice_number;
-        $invoice->delete(); // Soft delete!
+        $invoice->delete();
 
         ActivityLog::log('trash', 'invoice', "Moved invoice #{$num} to Trash.", $id);
         return back()->with('warning', "Invoice #{$num} moved to Trash. You can restore it anytime from the Trash tab.");
@@ -363,6 +492,18 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::withTrashed()->with(['customer', 'items', 'company'])->findOrFail($id);
         $company = $invoice->company;
-        return view('invoices.print', compact('invoice', 'company'));
+
+        // UPI QR URL for print
+        $upiUrl = null;
+        if ($company->enable_upi_qr && !empty($company->upi_id) && $invoice->balance_amount > 0) {
+            $pa = rawurlencode($company->upi_id);
+            $pn = rawurlencode($company->upi_name ?: $company->name);
+            $am = number_format($invoice->balance_amount, 2, '.', '');
+            $tr = rawurlencode($invoice->invoice_number);
+            $tn = rawurlencode('Invoice ' . $invoice->invoice_number);
+            $upiUrl = "upi://pay?pa={$pa}&pn={$pn}&am={$am}&tr={$tr}&tn={$tn}&cu=INR";
+        }
+
+        return view('invoices.print', compact('invoice', 'company', 'upiUrl'));
     }
 }

@@ -366,4 +366,127 @@ class MultiTenantSaaSTest extends TestCase
             'rate'          => 4500.00,
         ]);
     }
+    public function test_public_invoice_viewer_without_auth_and_upi_qr_payload(): void
+    {
+        $company = Company::first();
+        $company->update([
+            'upi_id' => 'acme@okhdfcbank',
+            'upi_name' => 'Acme Infotech',
+            'enable_upi_qr' => true,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->where('company_id', $company->id)->first();
+        $this->assertNotEmpty($invoice->public_uuid);
+
+        // Guest visitor accesses public magic link
+        $response = $this->get('/view/' . $invoice->public_uuid);
+        $response->assertStatus(200);
+        $response->assertSee($company->name);
+        $response->assertSee($invoice->invoice_number);
+        $response->assertSee('upi%3A%2F%2Fpay');
+    }
+
+    public function test_manual_payment_recording_and_invoice_balance_recalculation(): void
+    {
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($admin);
+
+        $customer = Customer::first();
+        $invoice = Invoice::create([
+            'company_id'     => $admin->company_id,
+            'customer_id'    => $customer->id,
+            'created_by'     => $admin->id,
+            'invoice_number' => 'TEST-PAY-' . uniqid(),
+            'type'           => 'tax_invoice',
+            'invoice_date'   => '2026-09-20',
+            'sale_type'      => 'LOCAL',
+            'tax_mode'       => 'simple',
+            'status'         => 'unpaid',
+            'taxable_amount' => 8474.58,
+            'total_amount'   => 10000.00,
+            'paid_amount'    => 0.00,
+            'balance_amount' => 10000.00,
+        ]);
+
+        // Record partial payment of 4000
+        $response = $this->post("/invoices/{$invoice->id}/payments", [
+            'amount' => 4000.00,
+            'payment_method' => 'cash',
+            'reference_no' => 'CASH-REC-001',
+            'paid_at' => date('Y-m-d'),
+            'notes' => 'Advance token payment',
+        ]);
+
+        $response->assertSessionHas('success');
+
+        $invoice->refresh();
+        $this->assertEquals(4000.00, $invoice->paid_amount);
+        $this->assertEquals(6000.00, $invoice->balance_amount);
+        $this->assertEquals('partially_paid', $invoice->status);
+
+        // Record remaining balance of 6000
+        $response2 = $this->post("/invoices/{$invoice->id}/payments", [
+            'amount' => 6000.00,
+            'payment_method' => 'upi',
+            'reference_no' => 'UPI-UTR-99999',
+            'paid_at' => date('Y-m-d'),
+        ]);
+
+        $response2->assertSessionHas('success');
+
+        $invoice->refresh();
+        $this->assertEquals(10000.00, $invoice->paid_amount);
+        $this->assertEquals(0.00, $invoice->balance_amount);
+        $this->assertEquals('paid', $invoice->status);
+    }
+
+    public function test_proforma_to_official_tax_invoice_conversion(): void
+    {
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($admin);
+        $customer = Customer::first();
+
+        // Create Proforma Quote
+        $invoice = Invoice::create([
+            'company_id' => $admin->company_id,
+            'customer_id' => $customer->id,
+            'created_by' => $admin->id,
+            'invoice_number' => 'EST-QUOTE-99',
+            'type' => 'proforma',
+            'invoice_date' => '2026-09-20',
+            'sale_type' => 'LOCAL',
+            'tax_mode' => 'simple',
+            'status' => 'draft',
+            'taxable_amount' => 5000,
+            'total_amount' => 5900,
+            'paid_amount' => 0,
+            'balance_amount' => 5900,
+        ]);
+
+        $this->assertEquals('proforma', $invoice->type);
+
+        // 1-Click Convert to Tax Invoice
+        $response = $this->post("/invoices/{$invoice->id}/convert-tax");
+        $response->assertSessionHas('success');
+
+        $invoice->refresh();
+        $this->assertEquals('tax_invoice', $invoice->type);
+        $this->assertNotEquals('EST-QUOTE-99', $invoice->invoice_number);
+    }
+
+    public function test_gstr1_b2b_b2c_and_hsn_summary_tax_report(): void
+    {
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($admin);
+
+        $response = $this->get('/reports/gstr1?month=' . date('Y-m'));
+        $response->assertStatus(200);
+        $response->assertSee('GSTR-1 Tax Reports');
+        $response->assertSee('Table 4: B2B Tax Invoices');
+
+        // CSV Export
+        $csvResponse = $this->get('/reports/gstr1/export-csv?month=' . date('Y-m'));
+        $csvResponse->assertStatus(200);
+        $this->assertStringContainsString('text/csv', $csvResponse->headers->get('Content-Type'));
+    }
 }

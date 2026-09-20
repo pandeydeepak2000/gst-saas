@@ -9,8 +9,15 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CompanySettingsController;
 use App\Http\Controllers\SuperAdminController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicInvoiceController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\TaxReportController;
 
-// Public / Guest Routes
+// Public Client Portal (Zero Friction Magic Link - No Login Required)
+Route::get('/view/{uuid}', [PublicInvoiceController::class, 'show'])->name('public.invoice.show');
+Route::post('/view/{uuid}/razorpay-callback', [PublicInvoiceController::class, 'razorpayCallback'])->name('public.invoice.razorpay');
+
+// Public / Guest Auth Routes
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
@@ -31,7 +38,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Invoices
+    // Invoices Management
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
     Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
@@ -42,6 +49,17 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/invoices/{id}/restore', [InvoiceController::class, 'restore'])->name('invoices.restore');
     Route::delete('/invoices/{id}/force', [InvoiceController::class, 'forceDelete'])->name('invoices.force_delete');
     Route::get('/invoices/{id}/print', [InvoiceController::class, 'print'])->name('invoices.print');
+
+    // Advanced Invoice Actions (Zoho Competitor Features)
+    Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'recordPayment'])->name('invoices.payments.store');
+    Route::post('/invoices/{id}/mark-as-paid', [InvoiceController::class, 'markAsPaid'])->name('invoices.mark-paid');
+    Route::post('/invoices/{id}/convert-tax', [InvoiceController::class, 'convertToTaxInvoice'])->name('invoices.convert-tax');
+    Route::delete('/payments/{transaction}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+    Route::get('/payments/{transaction}/receipt', [PaymentController::class, 'receipt'])->name('payments.receipt');
+
+    // GSTR-1 Tax Reports & CA Export
+    Route::get('/reports/gstr1', [TaxReportController::class, 'gstr1'])->name('reports.gstr1');
+    Route::get('/reports/gstr1/export-csv', [TaxReportController::class, 'exportCsv'])->name('reports.gstr1.export');
 
     // Customers
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
@@ -56,7 +74,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
     Route::get('/api/products/search', [ProductController::class, 'apiSearch'])->name('products.search');
 
-    // Company Settings
+    // Company Settings & Dedicated Integrations
     Route::get('/settings', [CompanySettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings', [CompanySettingsController::class, 'update'])->name('settings.update');
     Route::post('/settings/test-mail', [CompanySettingsController::class, 'sendTestMail'])->name('settings.test_mail');
@@ -65,6 +83,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('/profile/info', [ProfileController::class, 'updateInfo'])->name('profile.info');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
     // Super Admin Master Control Panel
     Route::middleware(['role:super_admin'])->prefix('super-admin')->group(function () {
         Route::get('/', [SuperAdminController::class, 'index'])->name('superadmin.index');
