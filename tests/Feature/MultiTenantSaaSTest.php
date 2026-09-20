@@ -173,9 +173,9 @@ class MultiTenantSaaSTest extends TestCase
         $acmeAdmin = User::where('email', 'admin@acme.com')->first();
         $this->actingAs($acmeAdmin);
 
+        // 1. Direct update updates name & phone, but official registered email remains locked for security
         $response = $this->put('/profile/info', [
             'name'  => 'Rajesh Kumar Updated',
-            'email' => 'rajesh.updated@acme.com',
             'phone' => '+919988770000',
         ]);
 
@@ -184,8 +184,35 @@ class MultiTenantSaaSTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id'    => $acmeAdmin->id,
             'name'  => 'Rajesh Kumar Updated',
-            'email' => 'rajesh.updated@acme.com',
+            'email' => 'admin@acme.com', // Kept locked against direct alteration
             'phone' => '+919988770000',
+        ]);
+
+        // 2. Submit formal email change request with justification
+        $requestResponse = $this->post('/profile/request-email-change', [
+            'requested_email' => 'rajesh.updated@acme.com',
+            'reason'          => 'Official domain rebranded to acme.in',
+        ]);
+        $requestResponse->assertSessionHas('success');
+
+        $this->assertDatabaseHas('email_change_requests', [
+            'company_id'      => $acmeAdmin->company_id,
+            'current_email'   => 'admin@acme.com',
+            'requested_email' => 'rajesh.updated@acme.com',
+            'status'          => 'pending',
+        ]);
+
+        // 3. Super Admin approves the email change request
+        $superAdmin = User::where('role', 'super_admin')->first();
+        $emailReq = \App\Models\EmailChangeRequest::where('company_id', $acmeAdmin->company_id)->latest('id')->first();
+
+        $this->actingAs($superAdmin);
+        $approveResponse = $this->post("/super-admin/email-requests/{$emailReq->id}/approve");
+        $approveResponse->assertSessionHas('success');
+
+        $this->assertDatabaseHas('users', [
+            'id'    => $acmeAdmin->id,
+            'email' => 'rajesh.updated@acme.com',
         ]);
     }
 
@@ -513,5 +540,66 @@ class MultiTenantSaaSTest extends TestCase
         $printClassic = $this->get("/invoices/{$invoice->id}/print?template=classic");
         $printClassic->assertStatus(200);
         $printClassic->assertSee('Template 2: Classic Corporate');
+    }
+
+    public function test_superadmin_protected_from_invoice_create_without_impersonation(): void
+    {
+        $super = User::where('role', 'super_admin')->first();
+        $this->actingAs($super);
+
+        // Accessing /invoices/create without impersonation safely redirects to super-admin without 500 error
+        $response = $this->get('/invoices/create');
+        $response->assertRedirect(route('superadmin.index'));
+        $response->assertSessionHas('info');
+    }
+
+    public function test_company_onboarding_approval_workflow(): void
+    {
+        // 1. Enable onboarding verification requirement
+        \App\Models\PlatformSetting::set('require_admin_approval_for_onboarding', '1');
+
+        // 2. Register a new tenant company
+        $regResponse = $this->post('/register', [
+            'company_name'          => 'Kavya Tech Solutions',
+            'admin_name'            => 'Kavya Sharma',
+            'email'                 => 'kavya@techsolutions.com',
+            'password'              => 'KavyaPass123',
+            'password_confirmation' => 'KavyaPass123',
+            'phone'                 => '+919876543210',
+            'state'                 => 'Maharashtra',
+            'gstin'                 => '27ABCDE1234F1Z5',
+            'tax_mode'              => 'detailed',
+        ]);
+        $regResponse->assertRedirect('/pending-approval');
+
+        $company = \App\Models\Company::where('name', 'Kavya Tech Solutions')->first();
+        $this->assertNotNull($company);
+        $this->assertEquals('pending', $company->approval_status);
+
+        // 3. User is redirected to pending page when trying to access dashboard
+        $kavyaUser = \App\Models\User::where('email', 'kavya@techsolutions.com')->first();
+
+        $dashResponse = $this->get('/dashboard');
+        $dashResponse->assertRedirect('/pending-approval');
+
+        $pendingPage = $this->get('/pending-approval');
+        $pendingPage->assertStatus(200);
+        $pendingPage->assertSee('Onboarding Under Review');
+
+        // 4. Super Admin approves company
+        $superAdmin = User::where('role', 'super_admin')->first();
+        $this->actingAs($superAdmin);
+
+        $approveResponse = $this->post("/super-admin/companies/{$company->id}/approve");
+        $approveResponse->assertSessionHas('success');
+
+        $company->refresh();
+        $this->assertEquals('approved', $company->approval_status);
+
+        // 5. User can now access dashboard
+        $freshUser = \App\Models\User::where('email', 'kavya@techsolutions.com')->first();
+        $this->actingAs($freshUser);
+        $activeDash = $this->get('/dashboard');
+        $activeDash->assertStatus(200);
     }
 }

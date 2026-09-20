@@ -35,6 +35,11 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+    // Holding page for unverified/pending company onboarding
+    Route::get('/pending-approval', function () {
+        return view('auth.pending-approval');
+    })->name('company.pending');
+
     Route::get('/', [DashboardController::class, 'index'])->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -79,15 +84,21 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('/settings', [CompanySettingsController::class, 'update'])->name('settings.update');
     Route::post('/settings/test-mail', [CompanySettingsController::class, 'sendTestMail'])->name('settings.test_mail');
 
-    // User Profile & Security (Change Password, Update Email/Name)
+    // User Profile & Security (Change Password, Request Registered Email Change)
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('/profile/info', [ProfileController::class, 'updateInfo'])->name('profile.info');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::post('/profile/request-email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.request_email_change');
 
     // Super Admin Master Control Panel
     Route::middleware(['role:super_admin'])->prefix('super-admin')->group(function () {
         Route::get('/', [SuperAdminController::class, 'index'])->name('superadmin.index');
         Route::post('/companies/{id}/toggle-status', [SuperAdminController::class, 'toggleStatus'])->name('superadmin.toggle_status');
+        Route::post('/companies/{id}/approve', [SuperAdminController::class, 'approveCompany'])->name('superadmin.approve_company');
+        Route::post('/companies/{id}/reject', [SuperAdminController::class, 'rejectCompany'])->name('superadmin.reject_company');
+        Route::post('/email-requests/{id}/approve', [SuperAdminController::class, 'approveEmailChange'])->name('superadmin.approve_email_change');
+        Route::post('/email-requests/{id}/reject', [SuperAdminController::class, 'rejectEmailChange'])->name('superadmin.reject_email_change');
+        Route::post('/onboarding-policy/toggle', [SuperAdminController::class, 'toggleOnboardingPolicy'])->name('superadmin.toggle_onboarding_policy');
         Route::post('/companies/{id}/impersonate', [SuperAdminController::class, 'impersonate'])->name('superadmin.impersonate');
     });
     Route::post('/super-admin/stop-impersonate', [SuperAdminController::class, 'stopImpersonate'])->name('superadmin.stop_impersonate');

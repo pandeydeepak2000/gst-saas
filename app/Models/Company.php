@@ -53,6 +53,8 @@ class Company extends Model
         'show_bank_on_invoice',
         'show_qr_on_invoice',
         'is_active',
+        'approval_status',
+        'trial_ends_at',
     ];
 
     protected $casts = [
@@ -63,6 +65,7 @@ class Company extends Model
         'show_qr_on_invoice' => 'boolean',
         'is_active' => 'boolean',
         'invoice_start_number' => 'integer',
+        'trial_ends_at' => 'datetime',
     ];
 
     public function users(): HasMany
@@ -105,5 +108,19 @@ class Company extends Model
 
         $nextNum = $this->invoices()->withTrashed()->count() + $startNumber;
         return $prefix . str_pad((string)$nextNum, 4, '0', STR_PAD_LEFT);
+    }
+    public function emailChangeRequests(): HasMany
+    {
+        return $this->hasMany(EmailChangeRequest::class);
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approval_status === 'approved' && $this->is_active;
+    }
+
+    public function isPendingApproval(): bool
+    {
+        return $this->approval_status === 'pending';
     }
 }

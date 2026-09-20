@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Models\PlatformSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -87,6 +88,9 @@ class AuthController extends Controller
         }
         $prefix = substr($prefix, 0, 4) . '-';
 
+        $requiresApproval = PlatformSetting::get('require_admin_approval_for_onboarding') === '1';
+        $approvalStatus = $requiresApproval ? 'pending' : 'approved';
+
         $company = Company::create([
             'name'                        => $validated['company_name'],
             'slug'                        => $slug,
@@ -98,6 +102,7 @@ class AuthController extends Controller
             'invoice_prefix'              => $prefix,
             'invoice_start_number'        => 1,
             'allow_manual_invoice_number' => true,
+            'approval_status'             => $approvalStatus,
             'is_active'                   => true,
         ]);
 
@@ -112,7 +117,11 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
-        ActivityLog::log('register', 'auth', "New company '{$company->name}' onboarded.");
+        ActivityLog::log('register', 'auth', "New company '{$company->name}' registered with status '{$approvalStatus}'.");
+
+        if ($requiresApproval) {
+            return redirect()->route('company.pending')->with('info', "Your registration is submitted and pending Super Admin review.");
+        }
 
         return redirect()->route('dashboard')->with('success', "Welcome to GST-SaaS! Your company '{$company->name}' is ready.");
     }
