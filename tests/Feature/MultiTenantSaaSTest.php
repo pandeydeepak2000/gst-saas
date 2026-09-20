@@ -256,4 +256,114 @@ class MultiTenantSaaSTest extends TestCase
         ]);
         $loginResponse->assertRedirect('/dashboard');
     }
+    public function test_super_admin_governance_and_access_control(): void
+    {
+        $superAdmin = User::where('role', 'super_admin')->first();
+        $acmeAdmin = User::where('email', 'admin@acme.com')->first();
+        $company = $acmeAdmin->company;
+
+        // 1. Regular company admin cannot access /super-admin (403)
+        $this->actingAs($acmeAdmin);
+        $forbiddenResponse = $this->get('/super-admin');
+        $forbiddenResponse->assertStatus(403);
+
+        // 2. Super admin can access /super-admin
+        $this->actingAs($superAdmin);
+        $saResponse = $this->get('/super-admin');
+        $saResponse->assertStatus(200);
+        $saResponse->assertSee('Platform Master Control');
+        $saResponse->assertSee($company->name);
+
+        // 3. Super admin can toggle company status (Suspend)
+        $toggleResponse = $this->post("/super-admin/companies/{$company->id}/toggle-status");
+        $toggleResponse->assertRedirect();
+        $this->assertDatabaseHas('companies', [
+            'id'        => $company->id,
+            'is_active' => false,
+        ]);
+
+        // 4. Super admin can re-activate
+        $this->post("/super-admin/companies/{$company->id}/toggle-status");
+        $this->assertDatabaseHas('companies', [
+            'id'        => $company->id,
+            'is_active' => true,
+        ]);
+
+        // 5. Super admin can impersonate company admin
+        $impResponse = $this->post("/super-admin/companies/{$company->id}/impersonate");
+        $impResponse->assertRedirect('/dashboard');
+        $this->assertEquals($acmeAdmin->id, auth()->id());
+    }
+
+    public function test_company_dedicated_smtp_configuration(): void
+    {
+        $acmeAdmin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($acmeAdmin);
+        $company = $acmeAdmin->company;
+
+        $response = $this->post('/settings', [
+            'name'                        => $company->name,
+            'state'                       => $company->state,
+            'tax_mode'                    => 'detailed',
+            'invoice_template'            => 'hosting_domain',
+            'invoice_prefix'              => 'ACME/26/',
+            'invoice_start_number'        => 1001,
+            'mail_host'                   => 'smtp.sendgrid.net',
+            'mail_port'                   => 587,
+            'mail_username'               => 'apikey',
+            'mail_password'               => 'SG.sample_key_12345',
+            'mail_encryption'             => 'tls',
+            'mail_from_address'           => 'invoices@acme.com',
+            'mail_from_name'              => 'Acme Cloud Invoicing',
+        ]);
+
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('companies', [
+            'id'                => $company->id,
+            'mail_host'         => 'smtp.sendgrid.net',
+            'mail_from_address' => 'invoices@acme.com',
+            'invoice_template'  => 'hosting_domain',
+        ]);
+    }
+
+    public function test_hosting_and_domain_invoice_creation(): void
+    {
+        $acmeAdmin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($acmeAdmin);
+        $customer = Customer::first();
+
+        $payload = [
+            'customer_id'    => $customer->id,
+            'invoice_number' => 'CLOUD-HOST-2026-01',
+            'invoice_date'   => '2026-09-20',
+            'due_date'       => '2026-10-05',
+            'sale_type'      => 'LOCAL',
+            'tax_mode'       => 'detailed',
+            'status'         => 'unpaid',
+            'items' => [
+                [
+                    'description'          => 'cPanel NVMe Web Hosting & SSL',
+                    'domain_name'          => 'greenstudio.jixsite.com',
+                    'service_period_start' => '2026-09-20',
+                    'service_period_end'   => '2027-09-19',
+                    'billing_cycle'        => '1 Year',
+                    'hsn_sac'              => '998315',
+                    'quantity'             => 1,
+                    'unit'                 => 'Year',
+                    'rate'                 => 4500.00,
+                    'gst_percent'          => 18.00,
+                ]
+            ]
+        ];
+
+        $response = $this->post('/invoices', $payload);
+        $response->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('invoice_items', [
+            'domain_name'   => 'greenstudio.jixsite.com',
+            'billing_cycle' => '1 Year',
+            'rate'          => 4500.00,
+        ]);
+    }
 }

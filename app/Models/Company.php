@@ -33,6 +33,15 @@ class Company extends Model
         'bank_branch',
         'upi_id',
         'terms_and_conditions',
+        'mail_host',
+        'mail_port',
+        'mail_username',
+        'mail_password',
+        'mail_encryption',
+        'mail_from_address',
+        'mail_from_name',
+        'invoice_template',
+        'industry_type',
         'is_active',
     ];
 

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -165,7 +165,22 @@
                 @foreach($invoice->items as $idx => $item)
                 <tr style="border-bottom: 1px solid #e2e8f0; {{ $idx % 2 === 1 ? 'background: #f8fafc;' : '' }}">
                     <td style="text-align: center; color: #94a3b8;">{{ $idx + 1 }}</td>
-                    <td style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500; color: #0f172a;">{{ $item->description }}</td>
+                    <td style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500; color: #0f172a;">
+    <div>{{ $item->description }}</div>
+    @if(!empty($item->domain_name) || !empty($item->service_period_start))
+    <div style="font-size: 8.5px; color: #4338ca; margin-top: 3px; font-weight: 600;">
+        @if(!empty($item->domain_name))
+            <span style="background: #e0e7ff; padding: 1px 5px; border-radius: 3px; color: #3730a3; display: inline-block;">🌐 {{ $item->domain_name }}</span>
+        @endif
+        @if(!empty($item->service_period_start))
+            <span style="color: #64748b; margin-left: 4px;">Period: {{ \Carbon\Carbon::parse($item->service_period_start)->format('d M Y') }} to {{ \Carbon\Carbon::parse($item->service_period_end)->format('d M Y') }}</span>
+        @endif
+        @if(!empty($item->billing_cycle))
+            <span style="background: #f1f5f9; padding: 1px 4px; border-radius: 3px; color: #475569; margin-left: 2px;">({{ $item->billing_cycle }})</span>
+        @endif
+    </div>
+    @endif
+</td>
                     <td style="text-align: center; color: #64748b;">{{ $item->hsn_sac ?: '-' }}</td>
                     <td style="text-align: center;">{{ $item->quantity }} {{ $item->unit }}</td>
                     <td style="text-align: right;">₹{{ number_format($item->rate, 2) }}</td>

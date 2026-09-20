@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Services\TenantMailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -32,10 +33,22 @@ class CompanySettingsController extends Controller
             // Tax display toggle: 'simple' vs 'detailed'
             'tax_mode'                    => ['required', 'in:simple,detailed'],
 
+            // Invoice Template Preset: 'standard' or 'hosting_domain'
+            'invoice_template'            => ['nullable', 'in:standard,hosting_domain'],
+
             // Custom Invoice Numbering settings
             'invoice_prefix'              => ['required', 'string', 'max:20'],
             'invoice_start_number'        => ['required', 'integer', 'min:1'],
             'allow_manual_invoice_number' => ['nullable', 'boolean'],
+
+            // Dedicated Company SMTP Mail Settings
+            'mail_host'                   => ['nullable', 'string', 'max:255'],
+            'mail_port'                   => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'mail_username'               => ['nullable', 'string', 'max:255'],
+            'mail_password'               => ['nullable', 'string', 'max:255'],
+            'mail_encryption'             => ['nullable', 'string', 'in:tls,ssl,none'],
+            'mail_from_address'           => ['nullable', 'email', 'max:255'],
+            'mail_from_name'              => ['nullable', 'string', 'max:255'],
 
             // Bank & Payment QR
             'bank_name'                   => ['nullable', 'string', 'max:150'],
@@ -72,10 +85,31 @@ class CompanySettingsController extends Controller
             $validated['signature_path'] = $request->file('signature')->store('signatures', 'public');
         }
 
+        // Keep existing password if not provided
+        if (empty($validated['mail_password'])) {
+            unset($validated['mail_password']);
+        }
+
         $company->update($validated);
 
-        ActivityLog::log('update', 'settings', "Updated company settings and billing preferences.");
+        ActivityLog::log('update', 'settings', "Updated company settings, SMTP credentials, and invoice template.");
 
-        return back()->with('success', 'Company preferences and invoice settings updated successfully!');
+        return back()->with('success', 'Company preferences, dedicated SMTP, and invoice settings updated successfully!');
+    }
+
+    public function sendTestMail(Request $request)
+    {
+        $company = auth()->user()->company;
+        $request->validate([
+            'test_email' => ['required', 'email'],
+        ]);
+
+        $result = TenantMailService::sendTestEmail($company, $request->test_email);
+
+        if ($result['success']) {
+            return back()->with('success', $result['message']);
+        }
+
+        return back()->with('warning', $result['message']);
     }
 }

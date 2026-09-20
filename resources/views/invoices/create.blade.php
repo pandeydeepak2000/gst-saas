@@ -1,4 +1,4 @@
-﻿<x-app-layout header="Create GST Tax Invoice">
+<x-app-layout header="Create GST Tax Invoice">
     <div class="max-w-6xl mx-auto space-y-6" x-data="invoiceBuilder()">
         
         <form action="{{ route('invoices.store') }}" method="POST" @submit="validateForm($event)" class="space-y-6">
@@ -134,11 +134,29 @@
                                     <td class="py-2 px-3 text-center text-xs font-mono font-bold text-slate-400" x-text="index + 1"></td>
                                     
                                     <td class="py-2 px-3">
-                                        <input type="text" :name="`items[${index}][description]`" x-model="item.description" required placeholder="Start typing item name..."
+                                        <input type="text" :name="`items[${index}][description]`" x-model="item.description" required placeholder="Item description or service..."
                                                list="products-catalog"
                                                @input="checkCatalog(item)"
                                                @keydown.enter.prevent="addItem()"
                                                class="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 focus:ring-1 focus:ring-brand-500 focus:outline-none">
+                                        
+                                        <!-- Hosting / Domain & Service Period Inputs -->
+                                        <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] bg-slate-50 p-1.5 rounded-lg border border-slate-200/70">
+                                            <span class="text-brand-700 font-bold">🌐 Domain/Cloud:</span>
+                                            <input type="text" :name="`items[${index}][domain_name]`" x-model="item.domain_name" placeholder="e.g. greenstudio.jixsite.com"
+                                                   class="px-2 py-0.5 text-xs rounded border border-slate-300 w-44 font-mono text-brand-900 bg-white">
+                                            <span class="text-slate-400">Period:</span>
+                                            <input type="date" :name="`items[${index}][service_period_start]`" x-model="item.service_period_start" class="px-1.5 py-0.5 text-[10px] rounded border border-slate-300 bg-white">
+                                            <span class="text-slate-400">to</span>
+                                            <input type="date" :name="`items[${index}][service_period_end]`" x-model="item.service_period_end" class="px-1.5 py-0.5 text-[10px] rounded border border-slate-300 bg-white">
+                                            <select :name="`items[${index}][billing_cycle]`" x-model="item.billing_cycle" class="px-1.5 py-0.5 text-[10px] rounded border border-slate-300 bg-white font-medium">
+                                                <option value="">Cycle</option>
+                                                <option value="1 Year">1 Year</option>
+                                                <option value="Monthly">Monthly</option>
+                                                <option value="3 Years">3 Years</option>
+                                                <option value="One-Time">One-Time</option>
+                                            </select>
+                                        </div>
                                     </td>
 
                                     <td class="py-2 px-3">
@@ -282,10 +300,10 @@
                 },
                 saleType: 'LOCAL',
                 items: [
-                    { description: '', hsn_sac: '', quantity: 1, unit: 'Pcs', rate: 0, gst_percent: 18 }
+                    { description: '', domain_name: '', service_period_start: '', service_period_end: '', billing_cycle: '1 Year', hsn_sac: '', quantity: 1, unit: 'Pcs', rate: 0, gst_percent: 18 }
                 ],
                 addItem() {
-                    this.items.push({ description: '', hsn_sac: '', quantity: 1, unit: 'Pcs', rate: 0, gst_percent: 18 });
+                    this.items.push({ description: '', domain_name: '', service_period_start: '', service_period_end: '', billing_cycle: '1 Year', hsn_sac: '', quantity: 1, unit: 'Pcs', rate: 0, gst_percent: 18 });
                 },
                 removeItem(idx) {
                     if (this.items.length > 1) {

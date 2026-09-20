@@ -7,6 +7,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CompanySettingsController;
+use App\Http\Controllers\SuperAdminController;
 use App\Http\Controllers\ProfileController;
 
 // Public / Guest Routes
@@ -58,9 +59,17 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // Company Settings
     Route::get('/settings', [CompanySettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings', [CompanySettingsController::class, 'update'])->name('settings.update');
+    Route::post('/settings/test-mail', [CompanySettingsController::class, 'sendTestMail'])->name('settings.test_mail');
 
     // User Profile & Security (Change Password, Update Email/Name)
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('/profile/info', [ProfileController::class, 'updateInfo'])->name('profile.info');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    // Super Admin Master Control Panel
+    Route::middleware(['role:super_admin'])->prefix('super-admin')->group(function () {
+        Route::get('/', [SuperAdminController::class, 'index'])->name('superadmin.index');
+        Route::post('/companies/{id}/toggle-status', [SuperAdminController::class, 'toggleStatus'])->name('superadmin.toggle_status');
+        Route::post('/companies/{id}/impersonate', [SuperAdminController::class, 'impersonate'])->name('superadmin.impersonate');
+    });
+    Route::post('/super-admin/stop-impersonate', [SuperAdminController::class, 'stopImpersonate'])->name('superadmin.stop_impersonate');
 });

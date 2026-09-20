@@ -81,8 +81,12 @@ class InvoiceController extends Controller
 
             // Items validation
             'items'                 => ['required', 'array', 'min:1'],
-            'items.*.description'   => ['required', 'string'],
-            'items.*.hsn_sac'       => ['nullable', 'string', 'max:20'],
+            'items.*.description'          => ['required', 'string'],
+            'items.*.domain_name'          => ['nullable', 'string', 'max:255'],
+            'items.*.service_period_start' => ['nullable', 'date'],
+            'items.*.service_period_end'   => ['nullable', 'date'],
+            'items.*.billing_cycle'        => ['nullable', 'string', 'max:50'],
+            'items.*.hsn_sac'              => ['nullable', 'string', 'max:20'],
             'items.*.quantity'      => ['required', 'numeric', 'min:0.01'],
             'items.*.unit'          => ['required', 'string', 'max:20'],
             'items.*.rate'          => ['required', 'numeric', 'min:0'],
@@ -144,9 +148,13 @@ class InvoiceController extends Controller
                 $grandTotal += $lineTotal;
 
                 InvoiceItem::create([
-                    'invoice_id'     => $invoice->id,
-                    'description'    => $itemData['description'],
-                    'hsn_sac'        => $itemData['hsn_sac'] ?? null,
+                    'invoice_id'           => $invoice->id,
+                    'description'          => $itemData['description'],
+                    'domain_name'          => $itemData['domain_name'] ?? null,
+                    'service_period_start' => $itemData['service_period_start'] ?? null,
+                    'service_period_end'   => $itemData['service_period_end'] ?? null,
+                    'billing_cycle'        => $itemData['billing_cycle'] ?? null,
+                    'hsn_sac'              => $itemData['hsn_sac'] ?? null,
                     'quantity'       => $qty,
                     'unit'           => $itemData['unit'] ?? 'Pcs',
                     'rate'           => $rate,
@@ -219,8 +227,12 @@ class InvoiceController extends Controller
             'notes'          => ['nullable', 'string'],
 
             'items'                 => ['required', 'array', 'min:1'],
-            'items.*.description'   => ['required', 'string'],
-            'items.*.hsn_sac'       => ['nullable', 'string', 'max:20'],
+            'items.*.description'          => ['required', 'string'],
+            'items.*.domain_name'          => ['nullable', 'string', 'max:255'],
+            'items.*.service_period_start' => ['nullable', 'date'],
+            'items.*.service_period_end'   => ['nullable', 'date'],
+            'items.*.billing_cycle'        => ['nullable', 'string', 'max:50'],
+            'items.*.hsn_sac'              => ['nullable', 'string', 'max:20'],
             'items.*.quantity'      => ['required', 'numeric', 'min:0.01'],
             'items.*.unit'          => ['required', 'string', 'max:20'],
             'items.*.rate'          => ['required', 'numeric', 'min:0'],
@@ -280,9 +292,13 @@ class InvoiceController extends Controller
                 $grandTotal += $lineTotal;
 
                 InvoiceItem::create([
-                    'invoice_id'     => $invoice->id,
-                    'description'    => $itemData['description'],
-                    'hsn_sac'        => $itemData['hsn_sac'] ?? null,
+                    'invoice_id'           => $invoice->id,
+                    'description'          => $itemData['description'],
+                    'domain_name'          => $itemData['domain_name'] ?? null,
+                    'service_period_start' => $itemData['service_period_start'] ?? null,
+                    'service_period_end'   => $itemData['service_period_end'] ?? null,
+                    'billing_cycle'        => $itemData['billing_cycle'] ?? null,
+                    'hsn_sac'              => $itemData['hsn_sac'] ?? null,
                     'quantity'       => $qty,
                     'unit'           => $itemData['unit'] ?? 'Pcs',
                     'rate'           => $rate,

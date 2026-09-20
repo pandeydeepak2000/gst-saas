@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
@@ -88,7 +88,14 @@
             </div>
             @endif
 
-            <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+                        <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+                @if(auth()->user()->isSuperAdmin())
+                <a href="{{ route('superadmin.index') }}" 
+                   class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-bold transition-colors bg-gradient-to-r from-rose-600 to-indigo-600 text-white shadow-md mb-2">
+                    <span>👑 Super Admin Portal</span>
+                    <span class="text-[10px] bg-white/20 px-1.5 py-0.5 rounded text-white font-mono">GLOBAL</span>
+                </a>
+                @endif
                 <a href="{{ route('dashboard') }}" 
                    class="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('dashboard') ? 'bg-brand-600 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                     Dashboard
@@ -166,6 +173,20 @@
             </div>
         </aside>
         <!-- Main Content Column -->
+            @if(session('impersonator_id'))
+            <div class="bg-gradient-to-r from-rose-600 to-purple-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md">
+                <div class="flex items-center gap-2">
+                    <span>👑 SUPER ADMIN MODE:</span>
+                    <span>You are currently managing {{ auth()->user()->company->name ?? 'this tenant' }} as an administrator.</span>
+                </div>
+                <form action="{{ route('superadmin.stop_impersonate') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="px-3 py-1 bg-white text-rose-700 rounded-lg text-xs font-black hover:bg-rose-50 transition-all shadow-sm">
+                        Return to Super Admin Control &rarr;
+                    </button>
+                </form>
+            </div>
+            @endif
         <div class="flex-1 flex flex-col min-w-0">
             
             <header class="h-16 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between shadow-sm sticky top-0 z-30">

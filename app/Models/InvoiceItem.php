@@ -13,6 +13,10 @@ class InvoiceItem extends Model
     protected $fillable = [
         'invoice_id',
         'description',
+        'domain_name',
+        'service_period_start',
+        'service_period_end',
+        'billing_cycle',
         'hsn_sac',
         'quantity',
         'unit',
