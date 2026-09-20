@@ -137,6 +137,12 @@
                     <span>Company Settings</span>
                     <span class="text-[10px] text-amber-300 font-mono">Tax & Prefix</span>
                 </a>
+
+                <a href="{{ route('profile.index') }}" 
+                   class="flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors {{ request()->routeIs('profile.*') ? 'bg-brand-600 text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                    <span>Profile & Password</span>
+                    <span class="text-[10px] text-emerald-400 font-mono">Security</span>
+                </a>
             </nav>
 
             <div class="p-4 border-t border-slate-800 bg-slate-950/40">

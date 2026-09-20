@@ -168,4 +168,92 @@ class MultiTenantSaaSTest extends TestCase
             'rate'       => 3200.00,
         ]);
     }
+    public function test_user_can_update_profile_info_and_email(): void
+    {
+        $acmeAdmin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($acmeAdmin);
+
+        $response = $this->put('/profile/info', [
+            'name'  => 'Rajesh Kumar Updated',
+            'email' => 'rajesh.updated@acme.com',
+            'phone' => '+919988770000',
+        ]);
+
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('users', [
+            'id'    => $acmeAdmin->id,
+            'name'  => 'Rajesh Kumar Updated',
+            'email' => 'rajesh.updated@acme.com',
+            'phone' => '+919988770000',
+        ]);
+    }
+
+    public function test_user_can_change_password_with_current_password_verification(): void
+    {
+        $acmeAdmin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($acmeAdmin);
+
+        // 1. Wrong current password should fail
+        $failResponse = $this->put('/profile/password', [
+            'current_password'      => 'wrong-current-password',
+            'password'              => 'new-secret-password-123',
+            'password_confirmation' => 'new-secret-password-123',
+        ]);
+        $failResponse->assertSessionHasErrors('current_password');
+
+        // 2. Correct current password should succeed
+        $successResponse = $this->put('/profile/password', [
+            'current_password'      => 'password',
+            'password'              => 'new-secret-password-123',
+            'password_confirmation' => 'new-secret-password-123',
+        ]);
+        $successResponse->assertSessionHas('success');
+
+        // 3. Verify user can now authenticate with new password
+        $this->post('/logout');
+        $loginResponse = $this->post('/login', [
+            'email'    => 'admin@acme.com',
+            'password' => 'new-secret-password-123',
+        ]);
+        $loginResponse->assertRedirect('/dashboard');
+        $this->assertAuthenticatedAs($acmeAdmin);
+    }
+
+    public function test_forgot_password_and_token_reset_flow(): void
+    {
+        // 1. Request reset link
+        $emailResponse = $this->post('/forgot-password', [
+            'email' => 'admin@bharat.com',
+        ]);
+        $emailResponse->assertSessionHas('status');
+
+        $resetToken = \Illuminate\Support\Facades\DB::table('password_reset_tokens')
+            ->where('email', 'admin@bharat.com')
+            ->value('token');
+        $this->assertNotNull($resetToken);
+
+        // 2. Simulate raw token reset
+        $rawToken = 'demo-test-token-123456';
+        \Illuminate\Support\Facades\DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => 'admin@bharat.com'],
+            ['token' => \Illuminate\Support\Facades\Hash::make($rawToken), 'created_at' => now()]
+        );
+
+        $resetResponse = $this->post('/reset-password', [
+            'token'                 => $rawToken,
+            'email'                 => 'admin@bharat.com',
+            'password'              => 'bharat-brand-new-pass-99',
+            'password_confirmation' => 'bharat-brand-new-pass-99',
+        ]);
+        $resetResponse->assertRedirect('/login');
+        $resetResponse->assertSessionHas('success');
+
+        // 3. Authenticate with newly reset password
+        $loginResponse = $this->post('/login', [
+            'email'    => 'admin@bharat.com',
+            'password' => 'bharat-brand-new-pass-99',
+        ]);
+        $loginResponse->assertRedirect('/dashboard');
+    }
 }

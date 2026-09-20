@@ -7,6 +7,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CompanySettingsController;
+use App\Http\Controllers\ProfileController;
 
 // Public / Guest Routes
 Route::middleware('guest')->group(function () {
@@ -15,6 +16,11 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'registerCompany']);
+
+    Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
+    Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
+    Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 });
 
 // Authenticated & Multi-Tenant Routes
@@ -52,4 +58,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // Company Settings
     Route::get('/settings', [CompanySettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings', [CompanySettingsController::class, 'update'])->name('settings.update');
+
+    // User Profile & Security (Change Password, Update Email/Name)
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
+    Route::put('/profile/info', [ProfileController::class, 'updateInfo'])->name('profile.info');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 });
