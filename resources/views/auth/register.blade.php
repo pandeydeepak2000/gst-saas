@@ -113,7 +113,7 @@
         </div>
 
         <!-- Right Form Panel (7 Cols) -->
-        <div class="lg:col-span-7 p-8 sm:p-10 flex flex-col justify-center max-h-[92vh] overflow-y-auto">
+        <div class="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-start">
             
             <!-- Auth Tab Switcher -->
             <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-xl mb-5 max-w-xs border border-slate-200">

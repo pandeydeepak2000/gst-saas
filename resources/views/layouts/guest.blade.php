@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-900">
+<html lang="en" class="min-h-full bg-slate-900">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -44,7 +44,7 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="min-h-full font-sans antialiased text-slate-900 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 sm:p-8 relative overflow-x-hidden selection:bg-emerald-500 selection:text-white">
+<body class="min-h-screen font-sans antialiased text-slate-900 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col justify-start items-center py-6 sm:py-10 px-3 sm:px-6 relative overflow-x-hidden selection:bg-emerald-500 selection:text-white">
     
     <!-- Ambient Background Glow Accents (Luxury Emerald & Amber, Zero Blue) -->
     <div class="fixed top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
