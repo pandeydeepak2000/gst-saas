@@ -489,4 +489,29 @@ class MultiTenantSaaSTest extends TestCase
         $csvResponse->assertStatus(200);
         $this->assertStringContainsString('text/csv', $csvResponse->headers->get('Content-Type'));
     }
+    public function test_super_admin_dashboard_redirect_and_print_template_toggles(): void
+    {
+        $super = User::where('role', 'super_admin')->first();
+        $this->actingAs($super);
+
+        // Super Admin accessing /dashboard must safely redirect to super-admin without 500 error
+        $response = $this->get('/dashboard');
+        $response->assertRedirect(route('superadmin.index'));
+
+        // Switch to tenant admin to test print templates
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($admin);
+
+        $invoice = Invoice::where('company_id', $admin->company_id)->first();
+
+        // Test Print Template 1: Modern
+        $printModern = $this->get("/invoices/{$invoice->id}/print?template=modern");
+        $printModern->assertStatus(200);
+        $printModern->assertSee('Template 1: Modern Executive');
+
+        // Test Print Template 2: Classic
+        $printClassic = $this->get("/invoices/{$invoice->id}/print?template=classic");
+        $printClassic->assertStatus(200);
+        $printClassic->assertSee('Template 2: Classic Corporate');
+    }
 }

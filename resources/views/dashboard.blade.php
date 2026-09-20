@@ -1,137 +1,170 @@
-﻿<x-app-layout header="Executive Billing Dashboard">
+<x-app-layout header="Executive Billing Dashboard">
     <div class="space-y-6">
         
-        <!-- Welcome Hero Banner -->
-        <div class="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl relative overflow-hidden">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-                <div>
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300 text-xs font-mono font-medium border border-brand-500/30">
-                            {{ $company->name }}
+        <!-- Welcome Executive Hero Banner -->
+        <div class="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm relative overflow-hidden">
+            <div class="absolute top-0 right-0 -mt-10 -mr-10 w-80 h-80 bg-gradient-to-br from-brand-100/40 via-indigo-100/30 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                <div class="space-y-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-mono font-bold border border-brand-200 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
+                            {{ $company?->name ?? 'GST-SaaS Platform' }}
                         </span>
-                        <span class="text-xs text-slate-400">· GSTIN: {{ $company->gstin ?: 'Not Configured' }}</span>
+                        @if($company?->gstin)
+                        <span class="text-xs font-mono font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                            GSTIN: {{ $company->gstin }}
+                        </span>
+                        @endif
+                        <span class="text-xs px-2.5 py-0.5 rounded-full font-bold uppercase {{ ($company?->tax_mode ?? 'simple') === 'detailed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200' }}">
+                            {{ ($company?->tax_mode ?? 'simple') === 'detailed' ? 'Split CGST/SGST Mode' : 'Simple 18% GST Mode' }}
+                        </span>
                     </div>
-                    <h2 class="text-2xl font-bold tracking-tight">Welcome back, {{ auth()->user()->name }}!</h2>
-                    <p class="text-sm text-slate-300 mt-1">Multi-Tenant ERP billing engine is active. Current Tax Mode: <span class="font-semibold text-brand-300 uppercase">{{ $company->tax_mode === 'detailed' ? 'Detailed Split (CGST+SGST/IGST)' : 'Simple GST (18%)' }}</span></p>
+
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                        Good day, {{ auth()->user()->name }}! 👋
+                    </h1>
+                    <p class="text-xs sm:text-sm text-slate-500 max-w-xl">
+                        Here is your business financial overview, client receivables, and recent tax invoices.
+                    </p>
                 </div>
-                <div class="flex items-center gap-3">
-                    <a href="{{ route('invoices.create') }}" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold shadow-lg shadow-brand-500/30 transition-all">
-                        + Create Invoice
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <a href="{{ route('invoices.create') }}" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-brand-500/20 transition-all flex items-center gap-1.5">
+                        <span>+ Create Invoice</span>
                     </a>
-                    <a href="{{ route('settings.index') }}" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold border border-slate-700 transition-all">
-                        Tax & Prefix Settings
+                    <a href="{{ route('reports.gstr1') }}" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-bold border border-slate-200 transition-all flex items-center gap-1.5">
+                        <span>📊 GSTR-1 Reports</span>
+                    </a>
+                    <a href="{{ route('settings.index') }}" class="p-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 shadow-sm transition-all" title="Settings">
+                        ⚙️
                     </a>
                 </div>
             </div>
         </div>
 
-        <!-- Metric KPI Cards -->
+        <!-- 4 Premium Metric KPI Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
-            <div class="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Billed</span>
-                <div class="text-2xl font-extrabold text-slate-900 tracking-tight font-mono mt-2">
+            <!-- 1. TOTAL INVOICED -->
+            <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Billed</span>
+                    <span class="p-2 rounded-xl bg-brand-50 text-brand-600 text-sm">📈</span>
+                </div>
+                <div class="text-2xl font-black font-mono text-slate-900 mt-2">
                     ₹{{ number_format($totalRevenue, 2) }}
                 </div>
-                <div class="text-xs text-emerald-600 mt-1 font-medium">
-                    {{ $invoicesCount }} Total Invoices Issued
+                <div class="flex items-center gap-1.5 text-[11px] text-slate-400 mt-1">
+                    <span class="font-bold text-slate-700">{{ $invoicesCount }}</span> total generated bills
                 </div>
             </div>
 
-            <div class="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Collected (Paid)</span>
-                <div class="text-2xl font-extrabold text-emerald-700 tracking-tight font-mono mt-2">
+            <!-- 2. PAID AMOUNT -->
+            <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Settled & Paid</span>
+                    <span class="p-2 rounded-xl bg-emerald-50 text-emerald-600 text-sm">✅</span>
+                </div>
+                <div class="text-2xl font-black font-mono text-emerald-600 mt-2">
                     ₹{{ number_format($paidAmount, 2) }}
                 </div>
-                <div class="text-xs text-slate-500 mt-1">
-                    Settled into Bank / UPI
+                <div class="flex items-center gap-1.5 text-[11px] text-emerald-700 font-semibold mt-1">
+                    Realized into bank accounts
                 </div>
             </div>
 
-            <div class="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Pending Dues</span>
-                <div class="text-2xl font-extrabold text-amber-700 tracking-tight font-mono mt-2">
+            <!-- 3. UNPAID BALANCE -->
+            <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-amber-700">Receivables Due</span>
+                    <span class="p-2 rounded-xl bg-amber-50 text-amber-600 text-sm">⏳</span>
+                </div>
+                <div class="text-2xl font-black font-mono text-amber-600 mt-2">
                     ₹{{ number_format($unpaidAmount, 2) }}
                 </div>
-                <div class="text-xs text-slate-500 mt-1">
-                    Awaiting customer clearance
+                <div class="flex items-center gap-1.5 text-[11px] text-amber-700 font-semibold mt-1">
+                    Outstanding from clients
                 </div>
             </div>
 
-            <div class="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">GST Collected</span>
-                <div class="text-2xl font-extrabold text-purple-700 tracking-tight font-mono mt-2">
+            <!-- 4. TAX COLLECTED -->
+            <div class="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-700">GST Collected</span>
+                    <span class="p-2 rounded-xl bg-indigo-50 text-indigo-600 text-sm">🏛️</span>
+                </div>
+                <div class="text-2xl font-black font-mono text-indigo-600 mt-2">
                     ₹{{ number_format($totalTaxes, 2) }}
                 </div>
-                <div class="text-xs text-slate-500 mt-1">
-                    {{ $company->tax_mode === 'detailed' ? 'Split CGST/SGST/IGST' : 'Total 18% GST collected' }}
+                <div class="flex items-center gap-1.5 text-[11px] text-slate-400 mt-1">
+                    Ready for GSTR-1 filing
                 </div>
             </div>
+
         </div>
 
-        <!-- Recent Invoices Table & Activity Stream -->
+        <!-- 2-COLUMN MAIN CONTENT -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <!-- RECENT INVOICES TABLE (2 COLS) -->
+            <div class="lg:col-span-2 p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
                     <div>
-                        <h3 class="font-bold text-slate-900">Recent Invoices</h3>
-                        <p class="text-xs text-slate-500">Real-time tenant ledger</p>
+                        <h3 class="font-bold text-slate-900 text-base">Recent Invoices</h3>
+                        <p class="text-xs text-slate-500">Latest outward billing and client payments.</p>
                     </div>
-                    <a href="{{ route('invoices.index') }}" class="text-xs font-bold text-brand-600 hover:text-brand-800">View All Invoices &rarr;</a>
+                    <a href="{{ route('invoices.index') }}" class="text-xs font-bold text-brand-600 hover:text-brand-800 hover:underline">
+                        View All Invoices →
+                    </a>
                 </div>
 
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold border-b border-slate-100">
+                <div class="overflow-x-auto rounded-2xl border border-slate-100">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-500 uppercase font-bold tracking-wider border-b border-slate-100">
                             <tr>
-                                <th class="py-3 px-4">Invoice #</th>
-                                <th class="py-3 px-4">Customer</th>
-                                <th class="py-3 px-4">Date</th>
-                                <th class="py-3 px-4 text-right">Amount</th>
-                                <th class="py-3 px-4">Status</th>
-                                <th class="py-3 px-4 text-right">Action</th>
+                                <th class="py-3 px-3.5">Invoice #</th>
+                                <th class="py-3 px-3">Client</th>
+                                <th class="py-3 px-3">Date</th>
+                                <th class="py-3 px-3 text-right">Amount</th>
+                                <th class="py-3 px-3 text-center">Status</th>
+                                <th class="py-3 px-3.5 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @forelse($recentInvoices as $inv)
                             <tr class="hover:bg-slate-50/80 transition-colors">
-                                <td class="py-3 px-4 font-mono font-bold text-brand-700">
+                                <td class="py-3 px-3.5 font-mono font-bold text-brand-700">
                                     <a href="{{ route('invoices.show', $inv->id) }}" class="hover:underline">
-                                        {{ $inv->invoice_number }}
+                                        #{{ $inv->invoice_number }}
                                     </a>
                                 </td>
-                                <td class="py-3 px-4">
-                                    <div class="font-medium text-slate-900">{{ $inv->customer->name ?? 'Direct' }}</div>
-                                    <div class="text-xs text-slate-400">{{ $inv->customer->phone ?? '' }}</div>
+                                <td class="py-3 px-3 font-semibold text-slate-800">
+                                    {{ $inv->customer->name ?? 'Walk-in' }}
                                 </td>
-                                <td class="py-3 px-4 text-slate-500 text-xs">
-                                    {{ $inv->invoice_date->format('d M, Y') }}
+                                <td class="py-3 px-3 font-mono text-slate-500">
+                                    {{ $inv->invoice_date->format('d M') }}
                                 </td>
-                                <td class="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                                <td class="py-3 px-3 text-right font-mono font-bold text-slate-900">
                                     ₹{{ number_format($inv->total_amount, 2) }}
                                 </td>
-                                <td class="py-3 px-4">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold
-                                        {{ $inv->status === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : ($inv->status === 'unpaid' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-600') }}">
-                                        {{ ucfirst($inv->status) }}
+                                <td class="py-3 px-3 text-center">
+                                    <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase
+                                        {{ $inv->status === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : ($inv->status === 'unpaid' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-700') }}">
+                                        {{ $inv->status }}
                                     </span>
                                 </td>
-                                <td class="py-3 px-4 text-right">
-                                    <div class="inline-flex items-center gap-2">
-                                        <a href="{{ route('invoices.print', $inv->id) }}" target="_blank" title="Print" class="text-xs font-semibold px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-700">
-                                            Print
-                                        </a>
-                                        <a href="{{ route('invoices.show', $inv->id) }}" title="View" class="text-xs font-semibold px-2 py-1 bg-brand-50 hover:bg-brand-100 rounded text-brand-700">
-                                            View
-                                        </a>
-                                    </div>
+                                <td class="py-3 px-3.5 text-right">
+                                    <a href="{{ route('invoices.show', $inv->id) }}" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-colors">
+                                        View
+                                    </a>
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="6" class="py-8 text-center text-slate-400 text-sm">
-                                    No invoices generated yet. Click "+ New Invoice" to start billing!
+                                <td colspan="6" class="py-8 text-center text-slate-400">
+                                    No invoices generated yet. Click <strong>+ Create Invoice</strong> to get started.
                                 </td>
                             </tr>
                             @endforelse
@@ -140,38 +173,81 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex flex-col justify-between">
-                <div>
-                    <h3 class="font-bold text-slate-900 mb-1">Audit Trail & Activity</h3>
-                    <p class="text-xs text-slate-500 mb-4">Immutable company activity log</p>
+            <!-- INTEGRATIONS & ACTIVITY SIDEBAR (1 COL) -->
+            <div class="space-y-6">
+                
+                <!-- INTEGRATION HEALTH STATUS -->
+                <div class="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                    <h3 class="font-bold text-slate-900 text-sm flex items-center justify-between">
+                        <span>Integrations Status</span>
+                        <a href="{{ route('settings.index') }}" class="text-xs text-brand-600 font-semibold hover:underline">Manage</a>
+                    </h3>
 
-                    <div class="space-y-3">
-                        @forelse($recentLogs as $log)
-                        <div class="flex items-start gap-2.5 text-xs">
-                            <div class="w-2 h-2 rounded-full bg-brand-500 mt-1 flex-shrink-0"></div>
-                            <div>
-                                <div class="font-semibold text-slate-800">{{ $log->description }}</div>
-                                <div class="text-slate-400 text-[11px] mt-0.5">
-                                    By {{ $log->user_name }} · {{ $log->created_at->diffForHumans() }}
+                    <div class="space-y-2.5 text-xs">
+                        <!-- UPI QR -->
+                        <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span>⚡</span>
+                                <div>
+                                    <strong class="text-slate-800 block">Dynamic UPI QR</strong>
+                                    <span class="text-[11px] text-slate-500 font-mono">{{ $company?->upi_id ?: 'Not Configured' }}</span>
                                 </div>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase {{ $company?->enable_upi_qr ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600' }}">
+                                {{ $company?->enable_upi_qr ? 'Active' : 'Disabled' }}
+                            </span>
+                        </div>
+
+                        <!-- Razorpay -->
+                        <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span>💳</span>
+                                <div>
+                                    <strong class="text-slate-800 block">Razorpay Gateway</strong>
+                                    <span class="text-[11px] text-slate-500 font-mono">{{ $company?->razorpay_key_id ? 'Key Configured' : 'No Key' }}</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase {{ $company?->enable_razorpay ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600' }}">
+                                {{ $company?->enable_razorpay ? 'Active' : 'Disabled' }}
+                            </span>
+                        </div>
+
+                        <!-- Dedicated SMTP -->
+                        <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span>✉️</span>
+                                <div>
+                                    <strong class="text-slate-800 block">Dedicated Mail Server</strong>
+                                    <span class="text-[11px] text-slate-500 font-mono">{{ $company?->mail_host ?: 'System Mailer' }}</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase {{ $company?->mail_host ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600' }}">
+                                {{ $company?->mail_host ? 'Connected' : 'Default' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RECENT AUDIT LOGS -->
+                <div class="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                    <h3 class="font-bold text-slate-900 text-sm">Recent Audit Log</h3>
+                    <div class="space-y-2.5 text-xs">
+                        @forelse($recentLogs as $log)
+                        <div class="flex items-start gap-2 text-slate-600 pb-2 border-b border-slate-100 last:border-0 last:pb-0">
+                            <span class="text-brand-600 font-bold">•</span>
+                            <div class="flex-1">
+                                <p class="text-slate-800">{{ $log->description }}</p>
+                                <span class="text-[10px] text-slate-400 font-mono">{{ $log->created_at->diffForHumans() }}</span>
                             </div>
                         </div>
                         @empty
-                        <div class="text-xs text-slate-400">No activity logged yet.</div>
+                        <p class="text-xs text-slate-400">No activity logs recorded yet.</p>
                         @endforelse
                     </div>
                 </div>
 
-                <div class="pt-4 mt-4 border-t border-slate-100">
-                    <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                        <span class="font-bold text-slate-800 block">Custom Invoice Numbering</span>
-                        <p class="text-slate-500 mt-1">Want custom prefix or want to freely edit invoice numbers manually? Visit Settings.</p>
-                        <a href="{{ route('settings.index') }}" class="inline-block mt-2 font-bold text-brand-600 hover:text-brand-700">
-                            Configure Settings &rarr;
-                        </a>
-                    </div>
-                </div>
             </div>
+
         </div>
 
     </div>

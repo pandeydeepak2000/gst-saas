@@ -49,6 +49,9 @@ class Company extends Model
         'mail_from_name',
         'invoice_template',
         'industry_type',
+        'invoice_design_template',
+        'show_bank_on_invoice',
+        'show_qr_on_invoice',
         'is_active',
     ];
 
@@ -56,6 +59,8 @@ class Company extends Model
         'allow_manual_invoice_number' => 'boolean',
         'enable_upi_qr' => 'boolean',
         'enable_razorpay' => 'boolean',
+        'show_bank_on_invoice' => 'boolean',
+        'show_qr_on_invoice' => 'boolean',
         'is_active' => 'boolean',
         'invoice_start_number' => 'integer',
     ];

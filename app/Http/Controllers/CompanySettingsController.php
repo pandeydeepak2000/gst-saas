@@ -35,6 +35,9 @@ class CompanySettingsController extends Controller
 
             // Invoice Template Preset: 'standard' or 'hosting_domain'
             'invoice_template'            => ['nullable', 'in:standard,hosting_domain'],
+            'invoice_design_template'     => ['nullable', 'in:modern,classic'],
+            'show_bank_on_invoice'        => ['nullable', 'boolean'],
+            'show_qr_on_invoice'          => ['nullable', 'boolean'],
 
             // Custom Invoice Numbering settings
             'invoice_prefix'              => ['required', 'string', 'max:20'],
@@ -80,6 +83,8 @@ class CompanySettingsController extends Controller
         $validated['allow_manual_invoice_number'] = $request->has('allow_manual_invoice_number');
         $validated['enable_upi_qr'] = $request->has('enable_upi_qr');
         $validated['enable_razorpay'] = $request->has('enable_razorpay');
+        $validated['show_bank_on_invoice'] = $request->has('show_bank_on_invoice');
+        $validated['show_qr_on_invoice'] = $request->has('show_qr_on_invoice');
 
         if (!empty($validated['gstin'])) {
             $validated['gstin'] = strtoupper($validated['gstin']);

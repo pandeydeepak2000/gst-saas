@@ -1,379 +1,396 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
-<div class="max-w-6xl mx-auto space-y-6">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div class="max-w-5xl mx-auto space-y-6" x-data="{ activeTab: 'general' }">
+    
+    <!-- PAGE HEADER -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-                <span>Company Settings & Integrations</span>
-                <span class="text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 font-medium border border-brand-200">Tenant Scoped</span>
+            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                <span>Company Control & Integrations</span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-bold border border-brand-200">Tenant Scoped</span>
             </h1>
-            <p class="text-sm text-slate-500 mt-1">Configure your GST rules, payment gateways, WhatsApp business messaging, and dedicated SMTP.</p>
+            <p class="text-xs text-slate-500 mt-0.5">Manage tax settings, invoice templates, UPI QR, payment gateway, and dedicated SMTP.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button type="submit" form="settings-form" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md shadow-brand-500/20 transition-all">
+                💾 Save Changes
+            </button>
         </div>
     </div>
 
-    <form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+    <!-- CLEAN NAVIGATION TABS -->
+    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200">
+        <button type="button" @click="activeTab = 'general'" 
+                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                :class="activeTab === 'general' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'">
+            <span>🏢 Company & GST</span>
+        </button>
+
+        <button type="button" @click="activeTab = 'templates'" 
+                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                :class="activeTab === 'templates' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'">
+            <span>📄 Invoice Design & Formats</span>
+        </button>
+
+        <button type="button" @click="activeTab = 'payments'" 
+                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                :class="activeTab === 'payments' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'">
+            <span>💳 Bank, UPI QR & Razorpay</span>
+        </button>
+
+        <button type="button" @click="activeTab = 'comms'" 
+                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                :class="activeTab === 'comms' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'">
+            <span>✉️ Dedicated SMTP & WhatsApp</span>
+        </button>
+    </div>
+
+    <!-- MAIN FORM -->
+    <form id="settings-form" action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
         @csrf
 
-        <!-- 1. INVOICE TEMPLATE PRESET -->
-        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-            <div>
-                <h3 class="font-bold text-slate-900 flex items-center gap-2">
-                    <span>Industry & Invoice Template Preset</span>
-                    <span class="text-xs px-2 py-0.5 rounded bg-brand-100 text-brand-700 font-semibold">Specialized Formats</span>
-                </h3>
-                <p class="text-xs text-slate-500 mt-0.5">Choose your business vertical to automatically activate specialized fields and print layouts.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label class="relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_template ?? 'standard') === 'standard' ? 'border-brand-600 bg-brand-50/40' : 'border-slate-200 hover:border-slate-300' }}">
-                    <input type="radio" name="invoice_template" value="standard" class="sr-only" {{ ($company->invoice_template ?? 'standard') === 'standard' ? 'checked' : '' }} onchange="this.form.submit()">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                            <span>📦 Standard GST Commercial</span>
-                        </span>
-                        @if(($company->invoice_template ?? 'standard') === 'standard')
-                        <span class="text-xs font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Active</span>
-                        @endif
+        <!-- TAB 1: GENERAL & GST PROFILE -->
+        <div x-show="activeTab === 'general'" class="space-y-5">
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+                <h3 class="text-sm font-bold text-slate-900">Business Identity & Tax Details</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <div class="sm:col-span-2">
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Company Registered Name *</label>
+                        <input type="text" name="name" value="{{ old('name', $company->name) }}" required
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
                     </div>
-                    <p class="text-xs text-slate-500">Ideal for Trading, Manufacturing, Retail, and Standard Service Providers.</p>
-                </label>
-
-                <label class="relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_template ?? 'standard') === 'hosting_domain' ? 'border-brand-600 bg-brand-50/40' : 'border-slate-200 hover:border-slate-300' }}">
-                    <input type="radio" name="invoice_template" value="hosting_domain" class="sr-only" {{ ($company->invoice_template ?? 'standard') === 'hosting_domain' ? 'checked' : '' }} onchange="this.form.submit()">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                            <span>🌐 Web Hosting & Domain Registrar</span>
-                        </span>
-                        @if(($company->invoice_template ?? 'standard') === 'hosting_domain')
-                        <span class="text-xs font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Active</span>
-                        @endif
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">GSTIN Number</label>
+                        <input type="text" name="gstin" value="{{ old('gstin', $company->gstin) }}" placeholder="29ABCDE1234F1Z5"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono text-xs sm:text-sm uppercase text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
                     </div>
-                    <p class="text-xs text-slate-500">WHMCS/Cloudflare style: Adds Domain Names, Service Subscription Periods, Billing Cycles, and SAC 998315.</p>
-                </label>
-            </div>
-        </div>
-
-        <!-- 2. TAX DISPLAY MODE -->
-        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-            <div>
-                <h3 class="font-bold text-slate-900 flex items-center gap-2">
-                    <span>Tax Calculation & Display Preference</span>
-                    <span class="text-xs px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold">User Freedom</span>
-                </h3>
-                <p class="text-xs text-slate-500 mt-0.5">Toggle between simple single tax line (e.g. 18% GST) or full split CGST/SGST/IGST breakdown.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label class="relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all {{ $company->tax_mode === 'simple' ? 'border-brand-600 bg-brand-50/40' : 'border-slate-200 hover:border-slate-300' }}">
-                    <input type="radio" name="tax_mode" value="simple" class="sr-only" {{ $company->tax_mode === 'simple' ? 'checked' : '' }}>
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                            <span>Simple Unified GST (18%)</span>
-                        </span>
-                        @if($company->tax_mode === 'simple')
-                        <span class="text-xs font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Selected</span>
-                        @endif
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">PAN Card Number</label>
+                        <input type="text" name="pan" value="{{ old('pan', $company->pan) }}" placeholder="ABCDE1234F"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono text-xs sm:text-sm uppercase text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
                     </div>
-                    <p class="text-xs text-slate-500">Displays total GST rate as a single line item without confusing split columns.</p>
-                </label>
-
-                <label class="relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all {{ $company->tax_mode === 'detailed' ? 'border-brand-600 bg-brand-50/40' : 'border-slate-200 hover:border-slate-300' }}">
-                    <input type="radio" name="tax_mode" value="detailed" class="sr-only" {{ $company->tax_mode === 'detailed' ? 'checked' : '' }}>
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                            <span>Detailed Split GST (CGST + SGST / IGST)</span>
-                        </span>
-                        @if($company->tax_mode === 'detailed')
-                        <span class="text-xs font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Selected</span>
-                        @endif
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Operating State *</label>
+                        <input type="text" name="state" value="{{ old('state', $company->state) }}" required
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
                     </div>
-                    <p class="text-xs text-slate-500">Shows legal breakdown (9% CGST + 9% SGST for intrastate, or 18% IGST for interstate).</p>
-                </label>
-            </div>
-        </div>
-
-        <!-- 3. CUSTOM INVOICE NUMBERING -->
-        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-            <div>
-                <h3 class="font-bold text-slate-900">Invoice Numbering & Sequence Control</h3>
-                <p class="text-xs text-slate-500 mt-0.5">Customize your auto-generated invoice numbering format or allow staff to edit numbers manually.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Invoice Prefix</label>
-                    <input type="text" name="invoice_prefix" value="{{ old('invoice_prefix', $company->invoice_prefix) }}" 
-                           placeholder="INV- or GS-2026-" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-mono focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Postal Pincode</label>
+                        <input type="text" name="pincode" value="{{ old('pincode', $company->pincode) }}" placeholder="560100"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Registered Address</label>
+                        <input type="text" name="address" value="{{ old('address', $company->address) }}"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
                 </div>
+            </div>
 
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Starting Number Sequence</label>
-                    <input type="number" name="invoice_start_number" value="{{ old('invoice_start_number', $company->invoice_start_number) }}" 
-                           min="1" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-mono focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                </div>
-
-                <div class="flex items-center pt-6">
-                    <label class="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" name="allow_manual_invoice_number" value="1" 
-                               {{ $company->allow_manual_invoice_number ? 'checked' : '' }}
-                               class="w-5 h-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+            <!-- Tax Display Mode -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                <h3 class="text-sm font-bold text-slate-900">Tax Calculation & Display Mode</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all {{ $company->tax_mode === 'simple' ? 'border-brand-600 bg-brand-50/40' : 'border-slate-200' }}">
+                        <input type="radio" name="tax_mode" value="simple" class="w-4 h-4 text-brand-600" {{ $company->tax_mode === 'simple' ? 'checked' : '' }}>
                         <div>
-                            <span class="font-semibold text-slate-900 text-sm">Allow Manual Invoice Numbering</span>
-                            <p class="text-xs text-slate-500">Staff can freely type custom invoice numbers when creating bills.</p>
+                            <span class="font-bold text-slate-900 text-xs sm:text-sm block">Simple Unified GST (18%)</span>
+                            <span class="text-[11px] text-slate-500">Single line item GST.</span>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all {{ $company->tax_mode === 'detailed' ? 'border-brand-600 bg-brand-50/40' : 'border-slate-200' }}">
+                        <input type="radio" name="tax_mode" value="detailed" class="w-4 h-4 text-brand-600" {{ $company->tax_mode === 'detailed' ? 'checked' : '' }}>
+                        <div>
+                            <span class="font-bold text-slate-900 text-xs sm:text-sm block">Detailed Split GST</span>
+                            <span class="text-[11px] text-slate-500">CGST + SGST (9%+9%) or IGST (18%).</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Invoice Prefix -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                <h3 class="text-sm font-bold text-slate-900">Invoice Numbering & Prefix</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Prefix</label>
+                        <input type="text" name="invoice_prefix" value="{{ old('invoice_prefix', $company->invoice_prefix) }}" 
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Start Number</label>
+                        <input type="number" name="invoice_start_number" value="{{ old('invoice_start_number', $company->invoice_start_number) }}" 
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div class="flex items-center pt-5">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="allow_manual_invoice_number" value="1" 
+                                   {{ $company->allow_manual_invoice_number ? 'checked' : '' }}
+                                   class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500">
+                            <span class="text-xs font-semibold text-slate-800">Allow Manual Editing</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: INVOICE TEMPLATES & DESIGN -->
+        <div x-show="activeTab === 'templates'" class="space-y-5" x-cloak>
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                <h3 class="text-sm font-bold text-slate-900">Invoice Visual Templates (2 Formats)</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_design_template ?? 'modern') === 'modern' ? 'border-brand-600 bg-brand-50/30' : 'border-slate-200' }}">
+                        <input type="radio" name="invoice_design_template" value="modern" class="sr-only" {{ ($company->invoice_design_template ?? 'modern') === 'modern' ? 'checked' : '' }}>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-bold text-xs sm:text-sm text-slate-900">✨ Template 1: Modern Executive</span>
+                            @if(($company->invoice_design_template ?? 'modern') === 'modern')
+                            <span class="text-[10px] font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Active</span>
+                            @endif
+                        </div>
+                        <p class="text-[11px] text-slate-500">Indigo accents, styled party cards, balanced compact spacing without empty void.</p>
+                    </label>
+
+                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_design_template ?? 'modern') === 'classic' ? 'border-brand-600 bg-brand-50/30' : 'border-slate-200' }}">
+                        <input type="radio" name="invoice_design_template" value="classic" class="sr-only" {{ ($company->invoice_design_template ?? 'modern') === 'classic' ? 'checked' : '' }}>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-bold text-xs sm:text-sm text-slate-900">📐 Template 2: Classic Corporate</span>
+                            @if(($company->invoice_design_template ?? 'modern') === 'classic')
+                            <span class="text-[10px] font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Active</span>
+                            @endif
+                        </div>
+                        <p class="text-[11px] text-slate-500">Crisp monochrome border grid, traditional corporate layout, compact footer.</p>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Print Visibility Toggles -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                <h3 class="text-sm font-bold text-slate-900">Print Visibility & Section Toggles</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+                        <input type="checkbox" name="show_bank_on_invoice" value="1" {{ ($company->show_bank_on_invoice ?? true) ? 'checked' : '' }}
+                               class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 mt-0.5">
+                        <div>
+                            <strong class="text-xs text-slate-900 block">Show Bank Details on Invoices</strong>
+                            <span class="text-[11px] text-slate-500">Uncheck to hide bank name and A/C number.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+                        <input type="checkbox" name="show_qr_on_invoice" value="1" {{ ($company->show_qr_on_invoice ?? true) ? 'checked' : '' }}
+                               class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 mt-0.5">
+                        <div>
+                            <strong class="text-xs text-slate-900 block">Show Payment QR Code on Invoices</strong>
+                            <span class="text-[11px] text-slate-500">Uncheck to hide the dynamic UPI QR code.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Vertical Presets -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                <h3 class="text-sm font-bold text-slate-900">Industry Vertical Specialized Presets</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_template ?? 'standard') === 'standard' ? 'border-brand-600 bg-brand-50/40' : 'border-slate-200' }}">
+                        <input type="radio" name="invoice_template" value="standard" class="w-4 h-4 text-brand-600" {{ ($company->invoice_template ?? 'standard') === 'standard' ? 'checked' : '' }}>
+                        <div>
+                            <span class="font-bold text-slate-900 text-xs sm:text-sm block">Standard Trading & Goods</span>
+                            <span class="text-[11px] text-slate-500">Standard HSN codes, pieces, kilograms.</span>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_template ?? 'standard') === 'hosting_domain' ? 'border-brand-600 bg-brand-50/40' : 'border-slate-200' }}">
+                        <input type="radio" name="invoice_template" value="hosting_domain" class="w-4 h-4 text-brand-600" {{ ($company->invoice_template ?? 'standard') === 'hosting_domain' ? 'checked' : '' }}>
+                        <div>
+                            <span class="font-bold text-slate-900 text-xs sm:text-sm block">Web Hosting & Domain Registrar</span>
+                            <span class="text-[11px] text-slate-500">Adds Domain Names & Service Subscription Periods.</span>
                         </div>
                     </label>
                 </div>
             </div>
         </div>
 
-        <!-- 4. ZERO-FEE DYNAMIC NPCI UPI QR CODE -->
-        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div>
-                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
-                        <span>⚡ Zero-Fee Dynamic NPCI UPI QR Code</span>
-                        <span class="text-xs px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">0% Gateway Cut</span>
-                    </h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Direct merchant UPI payments from PhonePe, Google Pay, Paytm, CRED, and BHIM straight into your bank account.</p>
-                </div>
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="enable_upi_qr" value="1" {{ $company->enable_upi_qr ? 'checked' : '' }}
-                           class="w-5 h-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
-                    <span class="text-xs font-bold text-slate-700 uppercase">Enable UPI QR</span>
-                </label>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Company UPI VPA ID</label>
-                    <input type="text" name="upi_id" value="{{ old('upi_id', $company->upi_id) }}" placeholder="e.g. yourbusiness@okaxis, acme@icici"
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-mono text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                    <p class="text-[11px] text-slate-500 mt-1">This VPA is used to generate exact balance-due QR codes on PDF and web invoices.</p>
+        <!-- TAB 3: PAYMENTS, UPI QR & RAZORPAY -->
+        <div x-show="activeTab === 'payments'" class="space-y-5" x-cloak>
+            <!-- Dynamic UPI QR -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">⚡ Dynamic NPCI UPI QR Code (0% Fee)</h3>
+                        <p class="text-xs text-slate-500">Scannable by PhonePe, Google Pay, Paytm, CRED & BHIM.</p>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="enable_upi_qr" value="1" {{ $company->enable_upi_qr ? 'checked' : '' }}
+                               class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500">
+                        <span class="text-xs font-bold text-slate-700">Enable</span>
+                    </label>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Payee Name (as registered in Bank)</label>
-                    <input type="text" name="upi_name" value="{{ old('upi_name', $company->upi_name ?: $company->name) }}" placeholder="e.g. Acme Infotech Private Limited"
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Company UPI VPA ID</label>
+                        <input type="text" name="upi_id" value="{{ old('upi_id', $company->upi_id) }}" placeholder="e.g. yourbusiness@okaxis"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Payee Name in Bank</label>
+                        <input type="text" name="upi_name" value="{{ old('upi_name', $company->upi_name ?: $company->name) }}" placeholder="Acme Infotech"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- 5. DEDICATED RAZORPAY PAYMENT GATEWAY -->
-        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4" x-data="{ showRazorpaySecret: false }">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div>
-                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
-                        <span>💳 Dedicated Razorpay Online Payment Gateway</span>
-                        <span class="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-200">Per-Tenant Gateway</span>
-                    </h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Collect Credit/Debit Cards, NetBanking, and Wallets. Money settles directly into YOUR Razorpay account.</p>
+            <!-- Dedicated Razorpay Gateway -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3" x-data="{ showSecret: false }">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">💳 Dedicated Razorpay Online Gateway</h3>
+                        <p class="text-xs text-slate-500">Credit/Debit Cards & NetBanking into YOUR account.</p>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="enable_razorpay" value="1" {{ $company->enable_razorpay ? 'checked' : '' }}
+                               class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500">
+                        <span class="text-xs font-bold text-slate-700">Enable</span>
+                    </label>
                 </div>
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="enable_razorpay" value="1" {{ $company->enable_razorpay ? 'checked' : '' }}
-                           class="w-5 h-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
-                    <span class="text-xs font-bold text-slate-700 uppercase">Enable Razorpay</span>
-                </label>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Razorpay Key ID</label>
+                        <input type="text" name="razorpay_key_id" value="{{ old('razorpay_key_id', $company->razorpay_key_id) }}" placeholder="rzp_live_xxxxxxxxxxxxxx"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Razorpay Key Secret</label>
+                        <div class="relative">
+                            <input :type="showSecret ? 'text' : 'password'" name="razorpay_key_secret" 
+                                   placeholder="{{ $company->razorpay_key_secret ? '••••••••' : 'Secret Key' }}"
+                                   class="w-full px-3 py-2 pr-10 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <button type="button" @click="showSecret = !showSecret" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 text-xs">
+                                <span x-show="!showSecret">👁️</span><span x-show="showSecret" x-cloak>🙈</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Razorpay Key ID</label>
-                    <input type="text" name="razorpay_key_id" value="{{ old('razorpay_key_id', $company->razorpay_key_id) }}" placeholder="rzp_live_xxxxxxxxxxxxxx"
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-mono text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Razorpay Key Secret</label>
-                    <div class="relative">
-                        <input :type="showRazorpaySecret ? 'text' : 'password'" name="razorpay_key_secret" 
-                               placeholder="{{ $company->razorpay_key_secret ? '••••••••••••••••' : 'Secret Key' }}"
-                               class="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-300 text-slate-900 font-mono text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                        <button type="button" @click="showRazorpaySecret = !showRazorpaySecret" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
-                            <span x-show="!showRazorpaySecret">👁️</span>
-                            <span x-show="showRazorpaySecret" x-cloak>🙈</span>
-                        </button>
+            <!-- Bank Wire Details -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                <h3 class="text-sm font-bold text-slate-900">Direct Bank Wire (NEFT / RTGS)</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Bank Name</label>
+                        <input type="text" name="bank_name" value="{{ old('bank_name', $company->bank_name) }}" placeholder="HDFC Bank"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Account Number</label>
+                        <input type="text" name="bank_account_number" value="{{ old('bank_account_number', $company->bank_account_number) }}"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">IFSC Code</label>
+                        <input type="text" name="bank_ifsc" value="{{ old('bank_ifsc', $company->bank_ifsc) }}" placeholder="HDFC0000240"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono uppercase text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Branch Name</label>
+                        <input type="text" name="bank_branch" value="{{ old('bank_branch', $company->bank_branch) }}" placeholder="Electronic City"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 6. DEDICATED WHATSAPP BUSINESS INTEGRATION -->
-        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-            <div>
-                <h3 class="font-bold text-slate-900 flex items-center gap-2">
-                    <span>💬 Dedicated WhatsApp Business Billing & Reminders</span>
-                    <span class="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">1-Click Share</span>
-                </h3>
-                <p class="text-xs text-slate-500 mt-0.5">Customize your greeting message template. Invoice links and amounts will be dynamically inserted.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Company WhatsApp Number</label>
-                    <input type="text" name="whatsapp_number" value="{{ old('whatsapp_number', $company->whatsapp_number) }}" placeholder="+91 9876543210"
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-mono text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                    <p class="text-[11px] text-slate-500 mt-1">Displayed on the invoice as your official WhatsApp contact.</p>
+        <!-- TAB 4: SMTP & WHATSAPP -->
+        <div x-show="activeTab === 'comms'" class="space-y-5" x-cloak>
+            <!-- Dedicated SMTP Box -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3" x-data="{ showMailPass: false }">
+                <div class="pb-2 border-b border-slate-100">
+                    <h3 class="text-sm font-bold text-slate-900">✉️ Dedicated Company SMTP Mail Server</h3>
+                    <p class="text-xs text-slate-500">Emails sent directly through YOUR mail server.</p>
                 </div>
 
-                <div class="md:col-span-2">
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Custom Message Template</label>
-                    <textarea name="whatsapp_template" rows="3" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-xs font-mono focus:ring-2 focus:ring-brand-500 focus:outline-none" placeholder="Dear {customer_name}, your invoice #{invoice_number} from {company_name} for ₹{total_amount} is ready. View & Pay: {public_url}">{{ old('whatsapp_template', $company->whatsapp_template) }}</textarea>
-                    <div class="flex flex-wrap gap-1.5 mt-1.5">
-                        <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono cursor-pointer" title="Click to copy">{customer_name}</span>
-                        <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono cursor-pointer">{invoice_number}</span>
-                        <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono cursor-pointer">{total_amount}</span>
-                        <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono cursor-pointer">{balance_amount}</span>
-                        <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono cursor-pointer">{due_date}</span>
-                        <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono cursor-pointer">{public_url}</span>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">SMTP Host</label>
+                        <input type="text" name="mail_host" value="{{ old('mail_host', $company->mail_host) }}" placeholder="smtp.gmail.com or mail.domain.com"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">SMTP Port</label>
+                        <input type="number" name="mail_port" value="{{ old('mail_port', $company->mail_port ?: 587) }}" placeholder="587"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Encryption</label>
+                        <select name="mail_encryption" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <option value="tls" {{ ($company->mail_encryption ?: 'tls') === 'tls' ? 'selected' : '' }}>TLS (Port 587)</option>
+                            <option value="ssl" {{ $company->mail_encryption === 'ssl' ? 'selected' : '' }}>SSL (Port 465)</option>
+                            <option value="none" {{ $company->mail_encryption === 'none' ? 'selected' : '' }}>None</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Username / Email</label>
+                        <input type="text" name="mail_username" value="{{ old('mail_username', $company->mail_username) }}" placeholder="billing@domain.com"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Password</label>
+                        <div class="relative">
+                            <input :type="showMailPass ? 'text' : 'password'" name="mail_password" placeholder="{{ $company->mail_password ? '••••••••' : 'App Password' }}"
+                                   class="w-full px-3 py-2 pr-10 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            <button type="button" @click="showMailPass = !showMailPass" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 text-xs">
+                                <span x-show="!showMailPass">👁️</span><span x-show="showMailPass" x-cloak>🙈</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">"From" Email Address</label>
+                        <input type="email" name="mail_from_address" value="{{ old('mail_from_address', $company->mail_from_address ?: $company->email) }}" placeholder="billing@domain.com"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <!-- WhatsApp Template -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                <h3 class="text-sm font-bold text-slate-900">💬 Dedicated WhatsApp Business Integration</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">WhatsApp Phone Number</label>
+                        <input type="text" name="whatsapp_number" value="{{ old('whatsapp_number', $company->whatsapp_number) }}" placeholder="+91 9876543210"
+                               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">Default WhatsApp Message Template</label>
+                        <textarea name="whatsapp_template" rows="2" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">{{ old('whatsapp_template', $company->whatsapp_template) }}</textarea>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 7. BANK DETAILS FOR MANUAL TRANSFERS -->
-        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-            <div>
-                <h3 class="font-bold text-slate-900">Bank Account Details (NEFT / RTGS / IMPS)</h3>
-                <p class="text-xs text-slate-500 mt-0.5">Printed at the bottom of customer invoices for wire transfer settlements.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Bank Name</label>
-                    <input type="text" name="bank_name" value="{{ old('bank_name', $company->bank_name) }}" placeholder="e.g. HDFC Bank, ICICI"
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Account Number</label>
-                    <input type="text" name="bank_account_number" value="{{ old('bank_account_number', $company->bank_account_number) }}"
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-mono text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">IFSC Code</label>
-                    <input type="text" name="bank_ifsc" value="{{ old('bank_ifsc', $company->bank_ifsc) }}" placeholder="HDFC0000240"
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-mono uppercase text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Branch Name</label>
-                    <input type="text" name="bank_branch" value="{{ old('bank_branch', $company->bank_branch) }}" placeholder="Connaught Place, Delhi"
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                </div>
-            </div>
-        </div>
-
-        <!-- 8. DEDICATED COMPANY SMTP MAIL SERVER SETTINGS -->
-        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4" x-data="{ showSmtpPass: false }">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div>
-                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
-                        <span>Dedicated Company SMTP Mail Server</span>
-                        <span class="text-xs px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Per-Tenant Emailing</span>
-                    </h3>
-                    <p class="text-xs text-slate-500 mt-0.5">When configured, all client invoice notifications and staff password resets will be sent directly through YOUR mail server.</p>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">SMTP Host</label>
-                    <input type="text" name="mail_host" value="{{ old('mail_host', $company->mail_host) }}" placeholder="mail.mycompany.com or smtp.gmail.com"
-                           class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">SMTP Port</label>
-                    <input type="number" name="mail_port" value="{{ old('mail_port', $company->mail_port ?: 587) }}" placeholder="587"
-                           class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Encryption</label>
-                    <select name="mail_encryption" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                        <option value="tls" {{ ($company->mail_encryption ?: 'tls') === 'tls' ? 'selected' : '' }}>TLS (Port 587 - Recommended)</option>
-                        <option value="ssl" {{ $company->mail_encryption === 'ssl' ? 'selected' : '' }}>SSL (Port 465)</option>
-                        <option value="none" {{ $company->mail_encryption === 'none' ? 'selected' : '' }}>None (Insecure)</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">SMTP Username / Email</label>
-                    <input type="text" name="mail_username" value="{{ old('mail_username', $company->mail_username) }}" placeholder="billing@mycompany.com"
-                           class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">SMTP Password</label>
-                    <div class="relative">
-                        <input :type="showSmtpPass ? 'text' : 'password'" name="mail_password" placeholder="{{ $company->mail_password ? '••••••••' : 'App Password / Secret' }}"
-                               class="w-full px-3.5 py-2 pr-10 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono">
-                        <button type="button" @click="showSmtpPass = !showSmtpPass" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
-                            <span x-show="!showSmtpPass">👁️</span>
-                            <span x-show="showSmtpPass" x-cloak>🙈</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Sender Email ("From" Address)</label>
-                    <input type="email" name="mail_from_address" value="{{ old('mail_from_address', $company->mail_from_address ?: $company->email) }}" placeholder="billing@mycompany.com"
-                           class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono">
-                </div>
-            </div>
-        </div>
-
-        <!-- 9. GENERAL COMPANY PROFILE -->
-        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-            <h3 class="font-bold text-slate-900">General Legal Profile</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Company Trade Name *</label>
-                    <input type="text" name="name" value="{{ old('name', $company->name) }}" required
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Company GSTIN</label>
-                    <input type="text" name="gstin" value="{{ old('gstin', $company->gstin) }}" placeholder="07AAAAA0000A1Z5"
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 font-mono uppercase focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">State / UT *</label>
-                    <input type="text" name="state" value="{{ old('state', $company->state) }}" required
-                           class="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                </div>
-            </div>
-        </div>
-
-        <div class="flex justify-end gap-3 pt-4">
-            <button type="submit" class="px-8 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md transition-all">
-                Save All Company Preferences & Integrations
-            </button>
-        </div>
     </form>
 
-    <!-- LIVE SMTP TEST BOX -->
+    <!-- LIVE SMTP TEST COMPONENT -->
     @if($company->mail_host)
-    <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-            <h4 class="font-bold text-sm text-slate-900 flex items-center gap-1.5">
-                <span>⚡ Test Dedicated SMTP Connection</span>
-            </h4>
-            <p class="text-xs text-slate-500 mt-0.5">Send a real verification email through your mail server ({{ $company->mail_host }}) to confirm delivery.</p>
+            <h4 class="font-bold text-xs sm:text-sm text-slate-900">⚡ Test Dedicated SMTP Connection</h4>
+            <p class="text-[11px] text-slate-500">Send a live test message through {{ $company->mail_host }} to confirm outgoing delivery.</p>
         </div>
         <form action="{{ route('settings.test_mail') }}" method="POST" class="flex items-center gap-2">
             @csrf
             <input type="email" name="test_email" value="{{ auth()->user()->email }}" required
-                   placeholder="recipient@domain.com"
-                   class="px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-brand-500 font-mono">
-            <button type="submit" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold">
-                Send Test Email
+                   class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500 font-mono">
+            <button type="submit" class="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors">
+                Send Test Mail
             </button>
         </form>
     </div>
     @endif
+
 </div>
 @endsection

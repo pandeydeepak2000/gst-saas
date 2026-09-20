@@ -12,6 +12,9 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
+        if ($user->isSuperAdmin() && !session('impersonator_id')) {
+            return redirect()->route('superadmin.index');
+        }
         $company = $user->company;
 
         // Invoices Query (automatically scoped to tenant via TenantScope)

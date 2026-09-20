@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
@@ -60,7 +60,7 @@
                             GST-SaaS
                             <span class="text-[10px] px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 font-mono font-medium border border-brand-500/30">PRO</span>
                         </span>
-                        <p class="text-xs text-slate-400 truncate max-w-[140px]">{{ auth()->user()->company->name ?? 'Multi-Tenant' }}</p>
+                        <p class="text-xs text-slate-400 truncate max-w-[140px]">{{ auth()->user()->company?->name ?? 'Multi-Tenant' }}</p>
                     </div>
                 </a>
                 <button @click="mobileSidebarOpen = false" class="lg:hidden text-slate-400 hover:text-white">&times;</button>
@@ -70,14 +70,14 @@
             <div class="p-4 mx-4 mt-4 rounded-xl bg-slate-800/60 border border-slate-700/50">
                 <div class="flex items-center justify-between mb-1.5">
                     <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Tenant</span>
-                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full {{ auth()->user()->company->tax_mode === 'detailed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20' }}">
-                        <span class="w-1.5 h-1.5 rounded-full {{ auth()->user()->company->tax_mode === 'detailed' ? 'bg-emerald-400' : 'bg-blue-400' }}"></span>
-                        {{ auth()->user()->company->tax_mode === 'detailed' ? 'Split GST' : 'Simple GST' }}
+                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full {{ auth()->user()->company?->tax_mode === 'detailed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20' }}">
+                        <span class="w-1.5 h-1.5 rounded-full {{ auth()->user()->company?->tax_mode === 'detailed' ? 'bg-emerald-400' : 'bg-blue-400' }}"></span>
+                        {{ auth()->user()->company?->tax_mode === 'detailed' ? 'Split GST' : 'Simple GST' }}
                     </span>
                 </div>
-                <div class="font-semibold text-sm text-white truncate">{{ auth()->user()->company->name }}</div>
+                <div class="font-semibold text-sm text-white truncate">{{ auth()->user()->company?->name }}</div>
                 <div class="text-xs font-mono text-slate-400 mt-0.5 truncate">
-                    GSTIN: {{ auth()->user()->company->gstin ?: 'Not Configured' }}
+                    GSTIN: {{ auth()->user()->company?->gstin ?: 'Not Configured' }}
                 </div>
             </div>
             @endif
@@ -195,7 +195,7 @@
             <div class="bg-gradient-to-r from-rose-600 to-purple-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md">
                 <div class="flex items-center gap-2">
                     <span>👑 SUPER ADMIN MODE:</span>
-                    <span>You are currently managing {{ auth()->user()->company->name ?? 'this tenant' }} as an administrator.</span>
+                    <span>You are currently managing {{ auth()->user()->company?->name ?? 'this tenant' }} as an administrator.</span>
                 </div>
                 <form action="{{ route('superadmin.stop_impersonate') }}" method="POST">
                     @csrf
@@ -221,7 +221,7 @@
                     <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-medium text-slate-700">
                         <span class="text-slate-400">Tax Mode:</span>
                         <span class="font-bold text-brand-700 uppercase">
-                            {{ auth()->user()->company->tax_mode === 'detailed' ? 'Detailed Split' : 'Simple GST (18%)' }}
+                            {{ auth()->user()->company?->tax_mode === 'detailed' ? 'Detailed Split' : 'Simple GST (18%)' }}
                         </span>
                     </div>
                     @endif
