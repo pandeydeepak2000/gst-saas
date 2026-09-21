@@ -10,6 +10,8 @@ use App\Models\EmailChangeRequest;
 use App\Models\PlatformSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class SuperAdminController extends Controller
 {
@@ -74,6 +76,93 @@ class SuperAdminController extends Controller
             'auditLogs',
             'requireApproval'
         ));
+    }
+
+    /**
+     * Directly provision and onboard a new company tenant from Super Admin panel
+     */
+    public function storeCompany(Request $request)
+    {
+        $validated = $request->validate([
+            'company_name'  => ['required', 'string', 'max:255'],
+            'industry_type' => ['nullable', 'string', 'max:100'],
+            'admin_name'    => ['required', 'string', 'max:255'],
+            'email'         => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password'      => ['required', 'string', 'min:8'],
+            'phone'         => ['nullable', 'string', 'max:20'],
+            'state'         => ['required', 'string', 'max:100'],
+            'gstin'         => ['nullable', 'string', 'max:20'],
+            'tax_mode'      => ['required', 'in:simple,detailed'],
+        ]);
+
+        if (!empty($validated['gstin'])) {
+            $gstin = strtoupper(trim($validated['gstin']));
+            if (!preg_match('/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/', $gstin)) {
+                return back()->withInput()->withErrors([
+                    'gstin' => 'Please enter a valid 15-character Indian GSTIN format (e.g. 07AAAAA0000A1Z5) or leave empty.',
+                ]);
+            }
+        }
+
+        // Generate clean unique company slug
+        $baseSlug = Str::slug($validated['company_name']);
+        $slug = $baseSlug ?: 'company';
+        $counter = 1;
+        while (Company::where('slug', $slug)->exists()) {
+            $slug = ($baseSlug ?: 'company') . '-' . $counter++;
+        }
+
+        // Generate prefix from initials
+        $words = explode(' ', trim($validated['company_name']));
+        $prefix = '';
+        foreach ($words as $w) {
+            if (!empty($w)) {
+                $prefix .= strtoupper(substr($w, 0, 1));
+            }
+        }
+        $prefix = substr($prefix, 0, 4) . '-';
+
+        $company = Company::create([
+            'name'                        => $validated['company_name'],
+            'industry_type'               => $validated['industry_type'] ?? 'General Business',
+            'slug'                        => $slug,
+            'email'                       => strtolower(trim($validated['email'])),
+            'phone'                       => $validated['phone'] ?? null,
+            'state'                       => $validated['state'],
+            'gstin'                       => strtoupper($validated['gstin'] ?? ''),
+            'tax_mode'                    => $validated['tax_mode'],
+            'invoice_prefix'              => $prefix,
+            'invoice_start_number'        => 1,
+            'allow_manual_invoice_number' => true,
+            'approval_status'             => 'approved',
+            'is_active'                   => true,
+            'brand_theme'                 => 'violet',
+        ]);
+
+        $user = User::create([
+            'name'              => $validated['admin_name'],
+            'email'             => strtolower(trim($validated['email'])),
+            'password'          => Hash::make($validated['password']),
+            'company_id'        => $company->id,
+            'role'              => 'company_admin',
+            'phone'             => $validated['phone'] ?? null,
+            'email_verified_at' => now(),
+            'is_active'         => true,
+            'is_2fa_enabled'    => false,
+        ]);
+
+        ActivityLog::create([
+            'company_id'  => $company->id,
+            'user_id'     => auth()->id(),
+            'user_name'   => auth()->user()->name,
+            'role'        => 'super_admin',
+            'action'      => 'company_onboarded',
+            'module'      => 'superadmin',
+            'module_id'   => $company->id,
+            'description' => "Super Admin onboarded new company '{$company->name}' with primary admin account '{$user->email}'.",
+        ]);
+
+        return redirect()->route('superadmin.index')->with('success', "Company '{$company->name}' onboarded and activated successfully! Primary Admin credentials created for {$user->email}.");
     }
 
     public function toggleStatus($id)

@@ -1057,4 +1057,131 @@ class MultiTenantSaaSTest extends TestCase
         $response->assertHeader('X-XSS-Protection', '1; mode=block');
         $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     }
+
+    public function test_superadmin_can_directly_onboard_and_provision_company(): void
+    {
+        $superAdmin = User::where('email', 'superadmin@gstsaas.com')->first();
+        $this->actingAs($superAdmin);
+
+        $response = $this->post(route('superadmin.companies.store'), [
+            'company_name'  => 'Apex Cloud Technologies Pvt Ltd',
+            'industry_type' => 'IT & Software Services',
+            'admin_name'    => 'Karan Oberoi',
+            'email'         => 'karan@apexcloud.io',
+            'password'      => 'SecurePassword123!',
+            'phone'         => '+919988776655',
+            'state'         => 'Karnataka',
+            'gstin'         => '29AAAAA0000A1Z5',
+            'tax_mode'      => 'detailed',
+        ]);
+
+        $response->assertRedirect(route('superadmin.index'));
+        $response->assertSessionHas('success');
+
+        $company = Company::where('name', 'Apex Cloud Technologies Pvt Ltd')->first();
+        $this->assertNotNull($company);
+        $this->assertEquals('approved', $company->approval_status);
+        $this->assertTrue($company->is_active);
+        $this->assertEquals('Karnataka', $company->state);
+
+        $admin = User::where('email', 'karan@apexcloud.io')->first();
+        $this->assertNotNull($admin);
+        $this->assertEquals($company->id, $admin->company_id);
+        $this->assertEquals('company_admin', $admin->role);
+        $this->assertTrue($admin->is_active);
+
+        $this->assertDatabaseHas('activity_logs', [
+            'action'    => 'company_onboarded',
+            'user_name' => $superAdmin->name,
+        ]);
+    }
+
+    public function test_users_can_toggle_2fa_in_profile_across_all_roles(): void
+    {
+        // 1. Super Admin toggle
+        $superAdmin = User::where('email', 'superadmin@gstsaas.com')->first();
+        $this->actingAs($superAdmin);
+
+        $this->assertFalse((bool) $superAdmin->is_2fa_enabled);
+        $resp1 = $this->post(route('profile.2fa.toggle'));
+        $resp1->assertSessionHas('success');
+        $this->assertTrue((bool) $superAdmin->fresh()->is_2fa_enabled);
+
+        // Toggle back off
+        $resp2 = $this->post(route('profile.2fa.toggle'));
+        $resp2->assertSessionHas('success');
+        $this->assertFalse((bool) $superAdmin->fresh()->is_2fa_enabled);
+
+        // 2. Company Admin toggle
+        $companyAdmin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($companyAdmin);
+        $this->post(route('profile.2fa.toggle'))->assertSessionHas('success');
+        $this->assertTrue((bool) $companyAdmin->fresh()->is_2fa_enabled);
+
+        // 3. Staff User toggle
+        $staff = User::where('email', 'staff@acme.com')->first();
+        $this->actingAs($staff);
+        $this->post(route('profile.2fa.toggle'))->assertSessionHas('success');
+        $this->assertTrue((bool) $staff->fresh()->is_2fa_enabled);
+    }
+
+    public function test_two_factor_authentication_login_flow(): void
+    {
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
+        $user = User::where('email', 'admin@acme.com')->first();
+
+        // Case A: 2FA is OFF -> Direct login
+        $user->update(['is_2fa_enabled' => false]);
+        $directLogin = $this->post('/login', [
+            'email'    => 'admin@acme.com',
+            'password' => 'password',
+        ]);
+        $directLogin->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs($user);
+
+        auth()->logout();
+        $this->assertGuest();
+
+        // Case B: 2FA is ON -> Redirects to /login/2fa challenge
+        $user->update(['is_2fa_enabled' => true]);
+        $challengeResp = $this->post('/login', [
+            'email'    => 'admin@acme.com',
+            'password' => 'password',
+        ]);
+        $challengeResp->assertRedirect(route('login.2fa'));
+        $this->assertGuest(); // Not authenticated yet!
+
+        $this->assertEquals($user->id, session('2fa:user:id'));
+        $freshUser = $user->fresh();
+        $this->assertNotNull($freshUser->two_factor_code);
+        $this->assertNotNull($freshUser->two_factor_expires_at);
+
+        // Verify 2FA page loads
+        $twoFactorPage = $this->get(route('login.2fa'));
+        $twoFactorPage->assertStatus(200);
+        $twoFactorPage->assertSee('Two-Factor Authentication');
+        $twoFactorPage->assertSee('admin@acme.com');
+
+        // Invalid code fails
+        $failVerify = $this->post(route('login.2fa.verify'), ['code' => '000000']);
+        $failVerify->assertSessionHasErrors('code');
+        $this->assertGuest();
+
+        // Test resend generates new code
+        $resendResp = $this->withSession(['2fa:user:id' => $user->id])->post(route('login.2fa.resend'));
+        $resendResp->assertSessionHas('success');
+
+        // Extract fresh code directly for assertion test
+        $freshCode = session('2fa:preview');
+        $this->assertNotEmpty($freshCode);
+
+        // Submit valid OTP
+        $successVerify = $this->withSession(['2fa:user:id' => $user->id])->post(route('login.2fa.verify'), ['code' => $freshCode]);
+        $successVerify->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs($user);
+
+        // 2FA session cleared
+        $this->assertNull(session('2fa:user:id'));
+        $this->assertNull($user->fresh()->two_factor_code);
+    }
 }

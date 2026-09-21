@@ -20,20 +20,26 @@ class User extends Authenticatable
         'permissions',
         'phone',
         'is_active',
+        'is_2fa_enabled',
+        'two_factor_code',
+        'two_factor_expires_at',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_code',
     ];
 
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-            'permissions' => 'array',
+            'email_verified_at'     => 'datetime',
+            'password'              => 'hashed',
+            'is_active'             => 'boolean',
+            'is_2fa_enabled'        => 'boolean',
+            'two_factor_expires_at' => 'datetime',
+            'permissions'           => 'array',
         ];
     }
 

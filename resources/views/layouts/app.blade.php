@@ -13,7 +13,7 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="h-full font-sans antialiased text-slate-800" x-data="{ mobileSidebarOpen: false, showImpersonateModal: false }">
+<body class="h-full font-sans antialiased text-slate-800" x-data="{ mobileSidebarOpen: false, showImpersonateModal: false, showOnboardModal: false }" @open-onboard-modal.window="showOnboardModal = true">
     @php
         $user = auth()->user();
         $isSuperAdmin = $user && $user->isSuperAdmin() && !session('impersonator_id');
@@ -312,10 +312,10 @@
                 <div class="flex items-center gap-3">
                     @if($isSuperAdmin)
                         <!-- SUPER ADMIN CONTROLS (NO BROKEN TENANT INVOICE BUTTON) -->
-                        <a href="{{ route('register') }}" target="_blank" 
-                           class="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition-all">
+                        <button type="button" @click="showOnboardModal = true" 
+                                class="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition-all">
                             <span>+ Onboard Company</span>
-                        </a>
+                        </button>
 
                         <button type="button" @click="showImpersonateModal = true"
                                 class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold shadow-sm transition-all">
@@ -421,6 +421,153 @@
                     <div class="text-center py-6 text-slate-400 text-xs">No active companies found.</div>
                     @endforelse
                 </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    
+    <!-- DIRECT ONBOARDING MODAL (FOR SUPER ADMIN) -->
+    @if($isSuperAdmin)
+    <div x-show="showOnboardModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" role="dialog">
+        <div class="flex items-center justify-center min-h-screen px-4 p-0">
+            <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity" @click="showOnboardModal = false"></div>
+            
+            <div class="relative inline-block bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-2xl sm:w-full border border-slate-200">
+                <div class="bg-slate-950 p-6 text-white flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">Super Admin Authority</span>
+                            <span class="text-xs text-emerald-400 font-bold">⚡ Instant Activation</span>
+                        </div>
+                        <h3 class="text-lg font-black text-white mt-1 flex items-center gap-2">
+                            <span>🏢 Onboard & Provision New Company Tenant</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Provision a new business workspace and create the primary administrator account.</p>
+                    </div>
+                    <button type="button" @click="showOnboardModal = false" class="text-white/60 hover:text-white font-bold text-xl">&times;</button>
+                </div>
+
+                <form action="{{ route('superadmin.companies.store') }}" method="POST" class="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+                    @csrf
+
+                    <!-- 1. Company Information -->
+                    <div>
+                        <h4 class="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                            <span>1. Company Business Profile</span>
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Company Legal Name *</label>
+                                <input type="text" name="company_name" required placeholder="e.g. Zenith Tech Solutions Pvt Ltd"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Industry / Business Type</label>
+                                <select name="industry_type" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                    <option value="IT & Software Services">IT & Software Services</option>
+                                    <option value="Web Agency & Freelancing">Web Agency & Freelancing</option>
+                                    <option value="Wholesale & Distribution">Wholesale & Distribution</option>
+                                    <option value="Retail & E-Commerce">Retail & E-Commerce</option>
+                                    <option value="Consulting & CA Practice">Consulting & CA Practice</option>
+                                    <option value="Manufacturing & Fabrication">Manufacturing & Fabrication</option>
+                                    <option value="General Business">General Business / Other</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">State / Place of Supply *</label>
+                                <select name="state" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                    <option value="Delhi">Delhi (07)</option>
+                                    <option value="Maharashtra">Maharashtra (27)</option>
+                                    <option value="Karnataka">Karnataka (29)</option>
+                                    <option value="Uttar Pradesh">Uttar Pradesh (09)</option>
+                                    <option value="Gujarat">Gujarat (24)</option>
+                                    <option value="Tamil Nadu">Tamil Nadu (33)</option>
+                                    <option value="Rajasthan">Rajasthan (08)</option>
+                                    <option value="West Bengal">West Bengal (19)</option>
+                                    <option value="Telangana">Telangana (36)</option>
+                                    <option value="Haryana">Haryana (06)</option>
+                                    <option value="Kerala">Kerala (32)</option>
+                                    <option value="Madhya Pradesh">Madhya Pradesh (23)</option>
+                                    <option value="Punjab">Punjab (03)</option>
+                                    <option value="Bihar">Bihar (10)</option>
+                                    <option value="Odisha">Odisha (21)</option>
+                                    <option value="Assam">Assam (18)</option>
+                                    <option value="Other">Other State</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">GSTIN Number (Optional)</label>
+                                <input type="text" name="gstin" maxlength="15" placeholder="e.g. 07AAAAA0000A1Z5"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm font-mono uppercase focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Default GST Tax Mode *</label>
+                                <select name="tax_mode" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                    <option value="detailed">Split CGST & SGST (Detailed Indian Statutory)</option>
+                                    <option value="simple">Simple Flat 18% Single Line (IT/SaaS/Quick)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Primary Admin Credentials -->
+                    <div class="pt-4 border-t border-slate-200">
+                        <h4 class="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                            <span>2. Primary Company Administrator Account</span>
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Admin Full Name *</label>
+                                <input type="text" name="admin_name" required placeholder="e.g. Rahul Sharma"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Admin Login Email *</label>
+                                <input type="email" name="email" required placeholder="admin@company.com"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Login Password * (Min 8 chars)</label>
+                                <input type="password" name="password" required value="password123" placeholder="Min 8 characters"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <p class="text-[11px] text-slate-400 mt-1">Default: <code>password123</code></p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Phone Number (Optional)</label>
+                                <input type="text" name="phone" placeholder="+91 98765 43210"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security / Platform note -->
+                    <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                        <span class="text-base">⚡</span>
+                        <div>
+                            <strong>Super Admin Fast-Track:</strong> This tenant and administrator will be pre-approved, marked active, and given instant access to their billing portal with complete data isolation.
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center justify-end gap-3 pt-2">
+                        <button type="button" @click="showOnboardModal = false" 
+                                class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-all">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-lg shadow-slate-950/20 transition-all flex items-center gap-2">
+                            <span>+ Provision & Activate Tenant</span>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

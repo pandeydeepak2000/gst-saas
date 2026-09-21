@@ -135,6 +135,40 @@ class ProfileController extends Controller
         return back()->with('success', 'Your password has been changed successfully!');
     }
 
+    /**
+     * Toggle Two-Factor Authentication (2FA) for current authenticated user
+     * Works for Super Admin, Company Admin, and Staff members
+     */
+    public function toggle2fa(Request $request)
+    {
+        $user = auth()->user();
+        $newState = !$user->is_2fa_enabled;
+
+        $user->update([
+            'is_2fa_enabled'        => $newState,
+            'two_factor_code'       => null,
+            'two_factor_expires_at' => null,
+        ]);
+
+        $statusStr = $newState ? 'ENABLED' : 'DISABLED';
+
+        ActivityLog::create([
+            'company_id'  => $user->company_id,
+            'user_id'     => $user->id,
+            'user_name'   => $user->name,
+            'role'        => $user->role,
+            'action'      => '2fa_toggle',
+            'module'      => 'security',
+            'description' => "User '{$user->name}' {$statusStr} Two-Factor Authentication (2FA).",
+        ]);
+
+        $message = $newState 
+            ? 'Two-Factor Authentication (2FA) is now ENABLED! You will receive a verification code on your email during every login.'
+            : 'Two-Factor Authentication (2FA) has been DISABLED. You can now login directly with your password.';
+
+        return back()->with('success', $message);
+    }
+
     public function updateSignature(Request $request)
     {
         $user = auth()->user();

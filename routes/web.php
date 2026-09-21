@@ -31,6 +31,16 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
+    // 2FA Challenge & Verification Routes (Unauthenticated session)
+    Route::get('/login/2fa', [AuthController::class, 'show2fa'])->name('login.2fa');
+    Route::post('/login/2fa', [AuthController::class, 'verify2fa'])
+        ->name('login.2fa.verify')
+        ->middleware('throttle:5,1');
+    Route::post('/login/2fa/resend', [AuthController::class, 'resend2fa'])
+        ->name('login.2fa.resend')
+        ->middleware('throttle:3,1');
+    Route::get('/login/2fa/cancel', [AuthController::class, 'cancel2fa'])->name('login.2fa.cancel');
+
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register/send-otp', [AuthController::class, 'sendRegistrationOtp'])
         ->name('register.send_otp')
@@ -119,6 +129,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/request-email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.request_email_change');
     Route::post('/profile/signature', [ProfileController::class, 'updateSignature'])->name('profile.signature');
+    Route::post('/profile/2fa/toggle', [ProfileController::class, 'toggle2fa'])->name('profile.2fa.toggle');
 
     // Tenant Team & Staff Access Control (RBAC: team / company admin)
     Route::middleware(['permission:team'])->group(function () {
@@ -132,6 +143,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     // Super Admin Master Control Panel (Dedicated super_admin role required)
     Route::middleware(['role:super_admin'])->prefix('super-admin')->group(function () {
         Route::get('/', [SuperAdminController::class, 'index'])->name('superadmin.index');
+        Route::post('/companies', [SuperAdminController::class, 'storeCompany'])->name('superadmin.companies.store');
         Route::post('/companies/{id}/toggle-status', [SuperAdminController::class, 'toggleStatus'])->name('superadmin.toggle_status');
         Route::post('/companies/{id}/approve', [SuperAdminController::class, 'approveCompany'])->name('superadmin.approve_company');
         Route::post('/companies/{id}/reject', [SuperAdminController::class, 'rejectCompany'])->name('superadmin.reject_company');

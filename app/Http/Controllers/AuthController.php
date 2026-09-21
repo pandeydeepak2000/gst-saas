@@ -31,27 +31,169 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
-            $user = Auth::user();
+        $user = User::where('email', strtolower(trim($credentials['email'])))->first();
 
-            if (!$user->is_active) {
-                Auth::logout();
-                return back()->withErrors(['email' => 'Your account is deactivated. Contact administrator.']);
-            }
-
-            if ($user->company_id && (!$user->company || !$user->company->is_active)) {
-                Auth::logout();
-                return back()->withErrors(['email' => 'Your company subscription or access is currently inactive.']);
-            }
-
-            ActivityLog::log('login', 'auth', 'User logged in successfully');
-            return redirect()->intended(route('dashboard'));
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            return back()->withErrors([
+                'email' => 'The provided credentials do not match our records.',
+            ])->onlyInput('email');
         }
 
-        return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
-        ])->onlyInput('email');
+        if (!$user->is_active) {
+            return back()->withErrors(['email' => 'Your account is deactivated. Contact administrator.']);
+        }
+
+        if ($user->company_id && (!$user->company || !$user->company->is_active)) {
+            return back()->withErrors(['email' => 'Your company subscription or access is currently inactive.']);
+        }
+
+        // Check if 2FA is enabled for this user (Super Admin, Company Admin, or Staff)
+        if ($user->is_2fa_enabled) {
+            // Generate 6-digit OTP
+            $otp = (string) random_int(100000, 999999);
+            $user->update([
+                'two_factor_code'       => Hash::make($otp),
+                'two_factor_expires_at' => now()->addMinutes(10),
+            ]);
+
+            session([
+                '2fa:user:id'  => $user->id,
+                '2fa:remember' => $request->boolean('remember'),
+                '2fa:preview'  => (app()->isLocal() || app()->environment('testing')) ? $otp : null,
+            ]);
+
+            // Dispatch Email with OTP
+            try {
+                Mail::raw("Your GST-SaaS 2FA login verification code is: {$otp}\n\nThis 6-digit code expires in 10 minutes.\n\nDo not share this code with anyone.", function ($message) use ($user) {
+                    $message->to($user->email)->subject("Your 6-Digit 2FA Login Code - GST-SaaS");
+                });
+            } catch (\Throwable $e) {
+                Log::warning("Could not send 2FA OTP to {$user->email}: " . $e->getMessage());
+            }
+
+            Log::info("2FA OTP generated for {$user->email}: {$otp}");
+
+            ActivityLog::create([
+                'company_id'  => $user->company_id,
+                'user_id'     => $user->id,
+                'user_name'   => $user->name,
+                'role'        => $user->role,
+                'action'      => '2fa_challenge',
+                'module'      => 'auth',
+                'description' => "Two-Factor authentication code dispatched to {$user->email}.",
+            ]);
+
+            return redirect()->route('login.2fa')->with('info', "A 6-digit 2FA code has been sent to your email ({$user->email}).");
+        }
+
+        // Direct Login when 2FA is OFF
+        Auth::login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
+        ActivityLog::log('login', 'auth', 'User logged in successfully');
+        return redirect()->intended(route('dashboard'));
+    }
+
+    public function show2fa(Request $request)
+    {
+        if (Auth::check()) {
+            return redirect()->route('dashboard');
+        }
+
+        $userId = session('2fa:user:id');
+        if (!$userId) {
+            return redirect()->route('login');
+        }
+
+        $user = User::find($userId);
+        if (!$user) {
+            session()->forget(['2fa:user:id', '2fa:remember', '2fa:preview']);
+            return redirect()->route('login');
+        }
+
+        $otpPreview = session('2fa:preview');
+
+        return view('auth.two-factor', compact('user', 'otpPreview'));
+    }
+
+    public function verify2fa(Request $request)
+    {
+        $userId = session('2fa:user:id');
+        if (!$userId) {
+            return redirect()->route('login')->withErrors(['email' => 'Session expired. Please sign in again.']);
+        }
+
+        $user = User::find($userId);
+        if (!$user) {
+            session()->forget(['2fa:user:id', '2fa:remember', '2fa:preview']);
+            return redirect()->route('login');
+        }
+
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+
+        if (!$user->two_factor_code || !$user->two_factor_expires_at || now()->greaterThan($user->two_factor_expires_at)) {
+            return back()->withErrors(['code' => 'The verification code has expired. Please click resend to get a new code.']);
+        }
+
+        if (!Hash::check($validated['code'], $user->two_factor_code)) {
+            return back()->withErrors(['code' => 'Invalid 6-digit verification code. Please check and try again.']);
+        }
+
+        // Clear used 2FA code
+        $user->update([
+            'two_factor_code'       => null,
+            'two_factor_expires_at' => null,
+        ]);
+
+        $remember = session('2fa:remember', false);
+        session()->forget(['2fa:user:id', '2fa:remember', '2fa:preview']);
+
+        Auth::login($user, $remember);
+        $request->session()->regenerate();
+
+        ActivityLog::log('login', 'auth', 'User authenticated via 2FA successfully');
+
+        return redirect()->intended(route('dashboard'))->with('success', 'Logged in successfully with 2FA verification.');
+    }
+
+    public function resend2fa(Request $request)
+    {
+        $userId = session('2fa:user:id');
+        if (!$userId) {
+            return redirect()->route('login');
+        }
+
+        $user = User::find($userId);
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        $user->update([
+            'two_factor_code'       => Hash::make($otp),
+            'two_factor_expires_at' => now()->addMinutes(10),
+        ]);
+
+        session(['2fa:preview' => (app()->isLocal() || app()->environment('testing')) ? $otp : null]);
+
+        try {
+            Mail::raw("Your new GST-SaaS 2FA login verification code is: {$otp}\n\nThis 6-digit code expires in 10 minutes.\n\nDo not share this code with anyone.", function ($message) use ($user) {
+                $message->to($user->email)->subject("Your Resent 6-Digit 2FA Login Code - GST-SaaS");
+            });
+        } catch (\Throwable $e) {
+            Log::warning("Could not resend 2FA OTP to {$user->email}: " . $e->getMessage());
+        }
+
+        Log::info("Resent 2FA OTP for {$user->email}: {$otp}");
+
+        return back()->with('success', "A new 6-digit verification code has been dispatched to {$user->email}.");
+    }
+
+    public function cancel2fa(Request $request)
+    {
+        session()->forget(['2fa:user:id', '2fa:remember', '2fa:preview']);
+        return redirect()->route('login')->with('info', '2FA authentication cancelled. Please sign in again.');
     }
 
     public function showRegister()
@@ -62,7 +204,7 @@ class AuthController extends Controller
         return view('auth.register');
     }
 
-        public function sendRegistrationOtp(Request $request)
+    public function sendRegistrationOtp(Request $request)
     {
         $validated = $request->validate([
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
@@ -153,13 +295,15 @@ class AuthController extends Controller
         ]);
 
         $user = User::create([
-            'name'       => $validated['admin_name'],
-            'email'      => $validated['email'],
-            'password'   => Hash::make($validated['password']),
-            'company_id' => $company->id,
-            'role'       => 'company_admin',
-            'phone'      => $validated['phone'] ?? null,
-            'is_active'  => true,
+            'name'              => $validated['admin_name'],
+            'email'             => $validated['email'],
+            'password'          => Hash::make($validated['password']),
+            'company_id'        => $company->id,
+            'role'              => 'company_admin',
+            'phone'             => $validated['phone'] ?? null,
+            'email_verified_at' => now(),
+            'is_active'         => true,
+            'is_2fa_enabled'    => false,
         ]);
 
         Auth::login($user);
@@ -184,6 +328,7 @@ class AuthController extends Controller
 
         return redirect()->route('login')->with('info', 'You have been logged out.');
     }
+
     public function showForgotPassword()
     {
         return view('auth.forgot-password');

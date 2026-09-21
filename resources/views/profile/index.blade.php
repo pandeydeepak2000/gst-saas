@@ -1,9 +1,9 @@
-<x-app-layout header="My Profile & Security Settings">
+﻿<x-app-layout header="My Profile & Security Settings">
     <div class="max-w-4xl mx-auto space-y-6" x-data="{ showEmailModal: false }">
         
         <div>
             <h2 class="text-xl font-bold text-slate-900">User Profile & Account Security</h2>
-            <p class="text-sm text-slate-500">Manage your personal credentials, contact details, account password, and invoice signature.</p>
+            <p class="text-sm text-slate-500">Manage your personal credentials, contact details, account password, two-factor authentication, and invoice signature.</p>
         </div>
 
         @if($pendingEmailRequest)
@@ -123,7 +123,64 @@
             </form>
         </div>
 
-        <!-- 2. INVOICE SIGNATURE & DIGITAL SIGN-OFF (FOR TENANT COMPANIES) -->
+        <!-- 2. TWO-FACTOR AUTHENTICATION (2FA) TOGGLE (FOR ALL ROLES: SUPER ADMIN, COMPANY ADMIN, STAFF) -->
+        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-3">
+                <div class="space-y-0.5">
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-bold text-slate-900 flex items-center gap-1.5">
+                            <span>🛡️</span> Two-Factor Authentication (2FA)
+                        </h3>
+                        @if($user->is_2fa_enabled)
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                                ACTIVE / ENABLED
+                            </span>
+                        @else
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                DISABLED / OFF
+                            </span>
+                        @endif
+                    </div>
+                    <p class="text-xs text-slate-500">
+                        Add an essential extra layer of security. When enabled, a 6-digit OTP code will be sent to your registered email (<strong class="font-mono text-slate-700">{{ $user->email }}</strong>) whenever you log in.
+                    </p>
+                </div>
+
+                <form action="{{ route('profile.2fa.toggle') }}" method="POST">
+                    @csrf
+                    @if($user->is_2fa_enabled)
+                        <button type="submit" 
+                                onclick="return confirm('Are you sure you want to disable Two-Factor Authentication? Your account will only be protected by your password.');"
+                                class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5">
+                            <span>🔒</span> Turn OFF 2FA
+                        </button>
+                    @else
+                        <button type="submit" 
+                                class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-1.5">
+                            <span>⚡</span> Enable 2FA Security
+                        </button>
+                    @endif
+                </form>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-xs">
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                    <span class="font-bold text-slate-800 flex items-center gap-1">📧 Email OTP Guard</span>
+                    <p class="text-[11px] text-slate-500">Automatic 6-digit security code generated and sent to your email on every sign in.</p>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                    <span class="font-bold text-slate-800 flex items-center gap-1">⏳ 10-Minute Expiry</span>
+                    <p class="text-[11px] text-slate-500">One-time codes expire in 10 minutes and can only be used once to prevent replay attacks.</p>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                    <span class="font-bold text-slate-800 flex items-center gap-1">👤 Role Autonomous</span>
+                    <p class="text-[11px] text-slate-500">Independent control for Super Admin, Company Admin, and Staff members alike.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. INVOICE SIGNATURE & DIGITAL SIGN-OFF (FOR TENANT COMPANIES) -->
         @if($company)
         <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-5">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -221,7 +278,7 @@
         </div>
         @endif
 
-        <!-- 3. SECURITY & PASSWORD MANAGEMENT -->
+        <!-- 4. SECURITY & PASSWORD MANAGEMENT -->
         <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
             <div class="pb-3 border-b border-slate-100">
                 <h3 class="font-bold text-slate-900">Change Account Password</h3>

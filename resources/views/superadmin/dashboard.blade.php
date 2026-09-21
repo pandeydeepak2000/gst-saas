@@ -37,9 +37,9 @@
                             {{ $pendingApprovalsCount }} Pending Approvals
                         </button>
                     @endif
-                    <a href="{{ route('register') }}" target="_blank" class="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-white text-xs font-bold shadow-lg shadow-brand-500/30 transition-all flex items-center gap-2">
+                    <button type="button" @click="showOnboardModal = true" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2">
                         <span>+</span> Onboard New Company
-                    </a>
+                    </button>
                 </div>
             </div>
 
