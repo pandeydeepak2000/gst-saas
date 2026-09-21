@@ -99,7 +99,7 @@
             <button @click="currentTab = 'mail'" 
                     :class="currentTab === 'mail' ? 'text-emerald-600 border-emerald-600 bg-emerald-50/50' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50'"
                     class="px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 rounded-t-xl">
-                <span>??</span>
+                <span>📧</span>
                 <span>System Auth Mail & OTP Server</span>
                 @if($platformMail['is_configured'])
                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -402,7 +402,57 @@
         <!-- ========================================== -->
         <!-- TAB 3: GLOBAL AUDIT LOGS                    -->
         <!-- ========================================== -->
-        <div x-show="currentTab === 'audit'" class="space-y-4">
+        <div x-show="currentTab === 'audit'" class="space-y-6">
+            <!-- Live Active & Online Platform Users -->
+            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-slate-900">Live Online & Active Platform Users</h3>
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5">Real-time presence tracking across Super Admins, Company Admins, and Staff members.</p>
+                    </div>
+                    <span class="text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        {{ $onlineUsers->count() }} Currently Active
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @forelse($onlineUsers as $ou)
+                        <div class="p-3.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/20 flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <div class="relative">
+                                    <div class="w-9 h-9 rounded-xl bg-slate-900 text-white font-bold flex items-center justify-center text-xs">
+                                        {{ substr($ou->name, 0, 1) }}
+                                    </div>
+                                    <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"></span>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                        <span>{{ $ou->name }}</span>
+                                        <span class="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold uppercase
+                                            {{ $ou->role === 'super_admin' ? 'bg-rose-100 text-rose-700' : ($ou->role === 'company_admin' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700') }}">
+                                            {{ str_replace('_', ' ', $ou->role) }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 truncate max-w-[180px]">
+                                        {{ $ou->company->name ?? 'Platform Governance' }}
+                                    </div>
+                                    <div class="text-[10px] text-slate-400 font-mono">
+                                        IP: {{ $ou->last_ip ?? '127.0.0.1' }} · {{ $ou->last_seen_at ? $ou->last_seen_at->diffForHumans() : 'Active now' }}
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">ONLINE</span>
+                        </div>
+                    @empty
+                        <div class="col-span-full p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-2xl">
+                            No active users recorded in the last 5 minutes.
+                        </div>
+                    @endforelse
+                </div>
+            </div>
             <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex items-center justify-between">
                     <div>
@@ -512,6 +562,145 @@
 
             </div>
         </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 5: SYSTEM AUTH MAIL & OTP SERVER       -->
+        <!-- ========================================== -->
+        <div x-show="currentTab === 'mail'" class="space-y-6">
+            <!-- Header Banner -->
+            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-lg font-bold text-slate-900">Platform System Mail & Authentication SMTP</h3>
+                            @if($platformMail['is_configured'])
+                                <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active Dedicated SMTP
+                                </span>
+                            @else
+                                <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Fallback: System .env Mailer
+                                </span>
+                            @endif
+                        </div>
+                        <p class="text-xs text-slate-500 max-w-2xl">
+                            All platform-level authentication emails—including <strong>Super Admin & User 2FA OTP codes</strong>, <strong>Company Onboarding 4-digit verification OTPs</strong>, and <strong>Forgot Password resets</strong>—are delivered through this central SMTP server.
+                        </p>
+                    </div>
+
+                    <div class="p-3 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs max-w-sm">
+                        <span class="font-bold">💡 Multi-Tenant Isolation Rule:</span> Tenant companies configure their own custom SMTP under their workspace <em>Settings &gt; Mail Settings</em> strictly to dispatch customer invoices with their brand name.
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- SMTP Configuration Form (2 cols) -->
+                <div class="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-6">
+                    <div class="border-b border-slate-100 pb-4">
+                        <h4 class="font-bold text-slate-900">System SMTP Credentials</h4>
+                        <p class="text-xs text-slate-500">Configure connection details for sending system alerts and authentication emails.</p>
+                    </div>
+
+                    <form action="{{ route('superadmin.mail.update') }}" method="POST" class="space-y-5">
+                        @csrf
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="sm:col-span-2 space-y-1">
+                                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">SMTP Host *</label>
+                                <input type="text" name="platform_mail_host" value="{{ old('platform_mail_host', $platformMail['host']) }}" required placeholder="smtp.gmail.com / mail.domain.com"
+                                       class="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Port *</label>
+                                <input type="number" name="platform_mail_port" value="{{ old('platform_mail_port', $platformMail['port']) }}" required placeholder="587 / 465"
+                                       class="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">SMTP Username *</label>
+                                <input type="text" name="platform_mail_username" value="{{ old('platform_mail_username', $platformMail['username']) }}" required placeholder="auth@domain.com"
+                                       class="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">SMTP Password / App Key *</label>
+                                <input type="password" name="platform_mail_password" value="{{ old('platform_mail_password', $platformMail['password']) }}" placeholder="••••••••••••••••"
+                                       class="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Encryption Protocol</label>
+                                <select name="platform_mail_encryption" class="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                                    <option value="tls" {{ $platformMail['encryption'] === 'tls' ? 'selected' : '' }}>TLS (Port 587)</option>
+                                    <option value="ssl" {{ $platformMail['encryption'] === 'ssl' ? 'selected' : '' }}>SSL (Port 465)</option>
+                                    <option value="none" {{ $platformMail['encryption'] === 'none' ? 'selected' : '' }}>None (Local / Dev)</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">From Email Address *</label>
+                                <input type="email" name="platform_mail_from_address" value="{{ old('platform_mail_from_address', $platformMail['from_address']) }}" required placeholder="auth@domain.com"
+                                       class="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">From Sender Name *</label>
+                                <input type="text" name="platform_mail_from_name" value="{{ old('platform_mail_from_name', $platformMail['from_name']) }}" required placeholder="GST SaaS Auth Portal"
+                                       class="w-full text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                            <button type="submit" class="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2">
+                                <span>💾</span>
+                                <span>Save System Mail Settings</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Test Diagnostic Email & Security Note (1 col) -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">🧪</span>
+                            <div>
+                                <h4 class="font-bold text-slate-900 text-sm">Send Diagnostic Test Email</h4>
+                                <p class="text-xs text-slate-500">Verify SMTP handshake & authentication delivery</p>
+                            </div>
+                        </div>
+
+                        <form action="{{ route('superadmin.mail.test') }}" method="POST" class="space-y-3">
+                            @csrf
+                            <div>
+                                <label class="text-xs font-bold text-slate-700">Recipient Email Address</label>
+                                <input type="email" name="test_email" value="{{ auth()->user()->email }}" required placeholder="youremail@domain.com"
+                                       class="w-full mt-1 text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                            </div>
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2">
+                                <span>⚡</span>
+                                <span>Send Test Email Now</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="bg-slate-900 text-white rounded-3xl p-6 space-y-3">
+                        <div class="text-amber-400 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5">
+                            <span>🛡️</span> Security & Architecture
+                        </div>
+                        <h5 class="font-bold text-sm text-white">Centralized Platform Auth</h5>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            By decoupling Platform Auth SMTP from tenant-specific mail accounts, tenant companies cannot intercept password reset tokens, OTP codes, or superadmin notifications.
+                        </p>
+                        <div class="text-[11px] text-slate-400 border-t border-slate-800 pt-3">
+                            Fallback: If dedicated SMTP is not filled, system defaults to <code>MAIL_MAILER</code> from your server <code>.env</code>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
     </div>
 </x-app-layout>

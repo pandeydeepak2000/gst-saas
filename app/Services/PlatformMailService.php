@@ -9,6 +9,15 @@ use Illuminate\Support\Facades\Log;
 
 class PlatformMailService
 {
+
+    /**
+     * Check if platform SMTP host is configured
+     */
+    public static function isConfigured(): bool
+    {
+        return !empty(PlatformSetting::get('platform_mail_host'));
+    }
+
     /**
      * Dynamically configure SMTP mailer using Super Admin Platform Settings
      */

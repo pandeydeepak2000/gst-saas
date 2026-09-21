@@ -133,6 +133,19 @@
                         <span>Global Audit Trail</span>
                     </a>
 
+                                        <a href="{{ route('superadmin.index', ['tab' => 'mail']) }}" 
+                       class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all {{ request()->get('tab') === 'mail' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-300 hover:bg-slate-900 hover:text-white' }}">
+                        <span class="flex items-center gap-3">
+                            <span>📧</span>
+                            <span>Auth Mail & OTP Server</span>
+                        </span>
+                        @if(\App\Services\PlatformMailService::isConfigured())
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        @else
+                            <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">SETUP</span>
+                        @endif
+                    </a>
+
                     <a href="{{ route('superadmin.index', ['tab' => 'policies']) }}" 
                        class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all {{ request()->get('tab') === 'policies' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-300 hover:bg-slate-900 hover:text-white' }}">
                         <span>⚙️</span>
