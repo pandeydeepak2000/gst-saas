@@ -23,6 +23,8 @@ class User extends Authenticatable
         'is_2fa_enabled',
         'two_factor_code',
         'two_factor_expires_at',
+        'last_seen_at',
+        'last_ip',
     ];
 
     protected $hidden = [
@@ -39,6 +41,7 @@ class User extends Authenticatable
             'is_active'             => 'boolean',
             'is_2fa_enabled'        => 'boolean',
             'two_factor_expires_at' => 'datetime',
+            'last_seen_at'          => 'datetime',
             'permissions'           => 'array',
         ];
     }
@@ -66,6 +69,11 @@ class User extends Authenticatable
     public function isAccountant(): bool
     {
         return $this->role === 'accountant';
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->last_seen_at && $this->last_seen_at->greaterThanOrEqualTo(now()->subMinutes(5));
     }
 
     public function canManageSettings(): bool

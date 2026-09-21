@@ -144,6 +144,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::middleware(['role:super_admin'])->prefix('super-admin')->group(function () {
         Route::get('/', [SuperAdminController::class, 'index'])->name('superadmin.index');
         Route::post('/companies', [SuperAdminController::class, 'storeCompany'])->name('superadmin.companies.store');
+        Route::post('/mail-settings', [SuperAdminController::class, 'updateMailSettings'])->name('superadmin.mail.update');
+        Route::post('/mail-settings/test', [SuperAdminController::class, 'sendPlatformTestMail'])->name('superadmin.mail.test');
+        Route::post('/audit-logs/purge', [SuperAdminController::class, 'purgeAuditLogs'])->name('superadmin.audit.purge');
         Route::post('/companies/{id}/toggle-status', [SuperAdminController::class, 'toggleStatus'])->name('superadmin.toggle_status');
         Route::post('/companies/{id}/approve', [SuperAdminController::class, 'approveCompany'])->name('superadmin.approve_company');
         Route::post('/companies/{id}/reject', [SuperAdminController::class, 'rejectCompany'])->name('superadmin.reject_company');

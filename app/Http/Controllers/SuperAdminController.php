@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\ActivityLog;
 use App\Models\EmailChangeRequest;
 use App\Models\PlatformSetting;
+use App\Services\PlatformMailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -55,8 +56,41 @@ class SuperAdminController extends Controller
 
         $pendingApprovalsCount = $pendingCompaniesCount + $emailRequests->where('status', 'pending')->count();
 
-        // Cross-Tenant Audit Logs
-        $auditLogs = ActivityLog::latest('id')->take(50)->get();
+        // Live Online & Active Users (Active in last 5 minutes)
+        $onlineUsers = User::with('company')
+            ->where('last_seen_at', '>=', now()->subMinutes(5))
+            ->latest('last_seen_at')
+            ->get();
+
+        $recentUsers = User::with('company')
+            ->whereNotNull('last_seen_at')
+            ->latest('last_seen_at')
+            ->take(15)
+            ->get();
+
+        // Cross-Tenant Audit Logs with Filtering
+        $auditQuery = ActivityLog::withoutGlobalScopes()->with(['company', 'user'])->latest('id');
+
+        if ($request->filled('audit_search')) {
+            $s = $request->audit_search;
+            $auditQuery->where(function($q) use ($s) {
+                $q->where('user_name', 'like', "%{$s}%")
+                  ->orWhere('action', 'like', "%{$s}%")
+                  ->orWhere('module', 'like', "%{$s}%")
+                  ->orWhere('description', 'like', "%{$s}%")
+                  ->orWhere('ip_address', 'like', "%{$s}%");
+            });
+        }
+
+        if ($request->filled('audit_company_id')) {
+            $auditQuery->where('company_id', $request->audit_company_id);
+        }
+
+        $auditLogs = $auditQuery->paginate(30, ['*'], 'audit_page');
+        $allCompaniesList = Company::orderBy('name')->get(['id', 'name']);
+
+        // Platform System Mail Server Settings
+        $platformMail = PlatformMailService::getSettings();
 
         // Platform Policy
         $requireApproval = PlatformSetting::get('require_admin_approval_for_onboarding') === '1';
@@ -74,6 +108,10 @@ class SuperAdminController extends Controller
             'emailRequests',
             'pendingApprovalsCount',
             'auditLogs',
+            'onlineUsers',
+            'recentUsers',
+            'allCompaniesList',
+            'platformMail',
             'requireApproval'
         ));
     }
@@ -384,5 +422,100 @@ class SuperAdminController extends Controller
         Auth::login($superAdmin);
 
         return redirect()->route('superadmin.index')->with('success', 'Returned to Super Admin control panel.');
+    }
+
+    /**
+     * Update Super Admin Platform Mail (System SMTP for OTP, 2FA, Reset Links)
+     */
+    public function updateMailSettings(Request $request)
+    {
+        $validated = $request->validate([
+            'platform_mail_host'         => ['required', 'string', 'max:255'],
+            'platform_mail_port'         => ['required', 'integer', 'min:1', 'max:65535'],
+            'platform_mail_username'     => ['nullable', 'string', 'max:255'],
+            'platform_mail_password'     => ['nullable', 'string', 'max:255'],
+            'platform_mail_encryption'   => ['nullable', 'string', 'in:tls,ssl,none'],
+            'platform_mail_from_address' => ['required', 'email', 'max:255'],
+            'platform_mail_from_name'    => ['required', 'string', 'max:255'],
+        ]);
+
+        foreach ($validated as $key => $val) {
+            if ($key === 'platform_mail_password' && empty($val)) {
+                continue; // Keep existing password if not provided
+            }
+            PlatformSetting::set($key, $val ?? '');
+        }
+
+        ActivityLog::create([
+            'user_id'     => auth()->id(),
+            'user_name'   => auth()->user()->name,
+            'role'        => 'super_admin',
+            'action'      => 'update_platform_mail',
+            'module'      => 'settings',
+            'description' => "Super Admin updated platform SMTP mail server configuration.",
+            'ip_address'  => request()->ip(),
+        ]);
+
+        return redirect()->route('superadmin.index', ['tab' => 'mail'])
+            ->with('success', 'Super Admin Platform Mail (Auth/OTP/Reset SMTP) updated successfully!');
+    }
+
+    /**
+     * Send diagnostic test email through Super Admin Platform SMTP
+     */
+    public function sendPlatformTestMail(Request $request)
+    {
+        $request->validate([
+            'test_email' => ['required', 'email'],
+        ]);
+
+        $result = PlatformMailService::sendTestEmail($request->test_email);
+
+        if ($result['success']) {
+            return redirect()->route('superadmin.index', ['tab' => 'mail'])
+                ->with('success', $result['message']);
+        }
+
+        return redirect()->route('superadmin.index', ['tab' => 'mail'])
+            ->with('warning', $result['message']);
+    }
+
+    /**
+     * Retention & Purge Tool for Old Activity Audit Logs (30 days, 60 days, or older)
+     */
+    public function purgeAuditLogs(Request $request)
+    {
+        $validated = $request->validate([
+            'older_than_days' => ['required', 'in:30,60,all'],
+        ]);
+
+        $days = $validated['older_than_days'];
+        $query = ActivityLog::withoutGlobalScopes();
+
+        if ($days === '30') {
+            $query->where('created_at', '<', now()->subDays(30));
+            $label = 'older than 30 days';
+        } elseif ($days === '60') {
+            $query->where('created_at', '<', now()->subDays(60));
+            $label = 'older than 60 days (2 months)';
+        } else {
+            $query->where('created_at', '<', now()->subHours(24));
+            $label = 'older than 24 hours';
+        }
+
+        $deletedCount = $query->delete();
+
+        ActivityLog::create([
+            'user_id'     => auth()->id(),
+            'user_name'   => auth()->user()->name,
+            'role'        => 'super_admin',
+            'action'      => 'purge_audit_logs',
+            'module'      => 'system',
+            'description' => "Super Admin purged {$deletedCount} activity audit logs {$label}.",
+            'ip_address'  => request()->ip(),
+        ]);
+
+        return redirect()->route('superadmin.index', ['tab' => 'audit'])
+            ->with('success', "Audit trail retention cleanup complete: {$deletedCount} logs ({$label}) purged successfully.");
     }
 }

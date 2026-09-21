@@ -22,6 +22,7 @@ class ActivityLog extends Model
         'module',
         'module_id',
         'description',
+        'ip_address',
     ];
 
     public function company(): BelongsTo
@@ -38,14 +39,15 @@ class ActivityLog extends Model
     {
         $user = auth()->user();
         return self::create([
-            'company_id' => $user?->company_id,
-            'user_id' => $user?->id,
-            'user_name' => $user?->name ?: 'System',
-            'role' => $user?->role ?: 'system',
-            'action' => $action,
-            'module' => $module,
-            'module_id' => $moduleId,
+            'company_id'  => $user?->company_id,
+            'user_id'     => $user?->id,
+            'user_name'   => $user?->name ?: 'System',
+            'role'        => $user?->role ?: 'system',
+            'action'      => $action,
+            'module'      => $module,
+            'module_id'   => $moduleId,
             'description' => $description,
+            'ip_address'  => request()->ip(),
         ]);
     }
 }

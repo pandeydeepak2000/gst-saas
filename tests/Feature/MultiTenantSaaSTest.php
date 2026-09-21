@@ -1184,4 +1184,90 @@ class MultiTenantSaaSTest extends TestCase
         $this->assertNull(session('2fa:user:id'));
         $this->assertNull($user->fresh()->two_factor_code);
     }
+
+    public function test_superadmin_can_configure_platform_system_mail_and_test(): void
+    {
+        $superAdmin = User::where('email', 'superadmin@gstsaas.com')->first();
+        $this->actingAs($superAdmin);
+
+        $response = $this->post(route('superadmin.mail.update'), [
+            'platform_mail_host'         => 'smtp.sendgrid.net',
+            'platform_mail_port'         => 587,
+            'platform_mail_username'     => 'apikey',
+            'platform_mail_password'     => 'SG.sample_api_secret_key',
+            'platform_mail_encryption'   => 'tls',
+            'platform_mail_from_address' => 'security@gstsaas.cloud',
+            'platform_mail_from_name'    => 'GST-SaaS Platform Authority',
+        ]);
+
+        $response->assertRedirect(route('superadmin.index', ['tab' => 'mail']));
+        $response->assertSessionHas('success');
+
+        $this->assertEquals('smtp.sendgrid.net', \App\Models\PlatformSetting::get('platform_mail_host'));
+        $this->assertEquals('587', \App\Models\PlatformSetting::get('platform_mail_port'));
+        $this->assertEquals('security@gstsaas.cloud', \App\Models\PlatformSetting::get('platform_mail_from_address'));
+
+        // Verify PlatformMailService reads these
+        $settings = \App\Services\PlatformMailService::getSettings();
+        $this->assertTrue($settings['is_configured']);
+        $this->assertEquals('smtp.sendgrid.net', $settings['host']);
+    }
+
+    public function test_user_activity_middleware_tracks_last_seen_and_ip(): void
+    {
+        $user = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($user);
+
+        $response = $this->get('/dashboard');
+        $response->assertStatus(200);
+
+        $freshUser = $user->fresh();
+        $this->assertNotNull($freshUser->last_seen_at);
+        $this->assertTrue($freshUser->isOnline());
+    }
+
+    public function test_superadmin_can_purge_audit_logs_older_than_30_days(): void
+    {
+        $superAdmin = User::where('email', 'superadmin@gstsaas.com')->first();
+        $this->actingAs($superAdmin);
+
+        // 1. Create a 45-day-old audit log record
+        $oldLog = \App\Models\ActivityLog::create([
+            'user_name'   => 'Old User',
+            'action'      => 'legacy_test',
+            'module'      => 'system',
+            'description' => 'Old activity from last month',
+        ]);
+        \Illuminate\Support\Facades\DB::table('activity_logs')
+            ->where('id', $oldLog->id)
+            ->update(['created_at' => now()->subDays(45)]);
+
+        // 2. Create a current audit log record
+        $freshLog = \App\Models\ActivityLog::create([
+            'user_name'   => 'Fresh User',
+            'action'      => 'fresh_test',
+            'module'      => 'system',
+            'description' => 'Activity from today',
+        ]);
+
+        // 3. Super Admin triggers 30-day purge
+        $purgeResp = $this->post(route('superadmin.audit.purge'), [
+            'older_than_days' => '30',
+        ]);
+
+        $purgeResp->assertRedirect(route('superadmin.index', ['tab' => 'audit']));
+        $purgeResp->assertSessionHas('success');
+
+        // Old log is purged
+        $this->assertDatabaseMissing('activity_logs', ['id' => $oldLog->id]);
+
+        // Fresh log remains
+        $this->assertDatabaseHas('activity_logs', ['id' => $freshLog->id]);
+
+        // Purge action is recorded in audit log
+        $this->assertDatabaseHas('activity_logs', [
+            'action'    => 'purge_audit_logs',
+            'user_name' => $superAdmin->name,
+        ]);
+    }
 }

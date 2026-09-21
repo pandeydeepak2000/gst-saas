@@ -96,6 +96,18 @@
                 <span>Global Audit Logs</span>
             </button>
 
+            <button @click="currentTab = 'mail'" 
+                    :class="currentTab === 'mail' ? 'text-emerald-600 border-emerald-600 bg-emerald-50/50' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50'"
+                    class="px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 rounded-t-xl">
+                <span>??</span>
+                <span>System Auth Mail & OTP Server</span>
+                @if($platformMail['is_configured'])
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                @else
+                    <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-bold">SETUP</span>
+                @endif
+            </button>
+
             <button @click="currentTab = 'policies'" 
                     :class="currentTab === 'policies' ? 'text-purple-600 border-purple-600 bg-purple-50/50' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50'"
                     class="px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 rounded-t-xl">

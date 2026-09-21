@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\PlatformSetting;
 use App\Models\EmailOtp;
+use App\Services\PlatformMailService;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
@@ -62,7 +63,8 @@ class AuthController extends Controller
                 '2fa:preview'  => (app()->isLocal() || app()->environment('testing')) ? $otp : null,
             ]);
 
-            // Dispatch Email with OTP
+            // Dispatch Email with OTP via Super Admin Platform Mail Server
+            PlatformMailService::configurePlatformMailer();
             try {
                 Mail::raw("Your GST-SaaS 2FA login verification code is: {$otp}\n\nThis 6-digit code expires in 10 minutes.\n\nDo not share this code with anyone.", function ($message) use ($user) {
                     $message->to($user->email)->subject("Your 6-Digit 2FA Login Code - GST-SaaS");
@@ -177,6 +179,7 @@ class AuthController extends Controller
 
         session(['2fa:preview' => (app()->isLocal() || app()->environment('testing')) ? $otp : null]);
 
+        PlatformMailService::configurePlatformMailer();
         try {
             Mail::raw("Your new GST-SaaS 2FA login verification code is: {$otp}\n\nThis 6-digit code expires in 10 minutes.\n\nDo not share this code with anyone.", function ($message) use ($user) {
                 $message->to($user->email)->subject("Your Resent 6-Digit 2FA Login Code - GST-SaaS");
@@ -214,6 +217,7 @@ class AuthController extends Controller
 
         $email = strtolower(trim($validated['email']));
 
+        PlatformMailService::configurePlatformMailer();
         try {
             // Generates 4-digit code, enforces 60s cooldown, 10m expiry
             $otp = EmailOtp::generateFor($email);
@@ -350,6 +354,15 @@ class AuthController extends Controller
         );
 
         $resetUrl = route('password.reset', ['token' => $token, 'email' => $user->email]);
+
+        PlatformMailService::configurePlatformMailer();
+        try {
+            Mail::raw("Hello {$user->name},\n\nYou requested a password reset for your GST-SaaS account.\n\nClick the link below to reset your password:\n{$resetUrl}\n\nIf you did not request this, please ignore this email.", function ($message) use ($user) {
+                $message->to($user->email)->subject("Reset Your GST-SaaS Account Password");
+            });
+        } catch (\Throwable $e) {
+            Log::warning("Could not send password reset email to {$user->email}: " . $e->getMessage());
+        }
 
         // In demo/cloud environment, provide instant 1-click reset banner
         return back()->with('status', 'Password reset instructions generated!')
