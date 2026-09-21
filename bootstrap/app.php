@@ -11,9 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         $middleware->alias([
-            'tenant' => \App\Http\Middleware\EnsureTenant::class,
-            'role'   => \App\Http\Middleware\CheckRole::class,
+            'tenant'     => \App\Http\Middleware\EnsureTenant::class,
+            'role'       => \App\Http\Middleware\CheckRole::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

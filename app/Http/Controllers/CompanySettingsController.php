@@ -23,7 +23,6 @@ class CompanySettingsController extends Controller
 
         $validated = $request->validate([
             'name'                        => ['required', 'string', 'max:255'],
-            'email'                       => ['nullable', 'email', 'max:255'],
             'phone'                       => ['nullable', 'string', 'max:20'],
             'address'                     => ['nullable', 'string'],
             'city'                        => ['nullable', 'string', 'max:100'],
@@ -78,10 +77,16 @@ class CompanySettingsController extends Controller
 
             'terms_and_conditions'        => ['nullable', 'string'],
 
-            // Files
-            'logo'                        => ['nullable', 'image', 'mimes:jpeg,png,jpg,svg', 'max:2048'],
-            'signature'                   => ['nullable', 'image', 'mimes:jpeg,png,jpg,svg', 'max:2048'],
+            // Files: strictly safe raster images (no raw svg XSS vectors)
+            'logo'                        => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'signature'                   => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ]);
+
+        // ANTI-TAKEOVER PROTECTION: Official billing email cannot be updated through regular settings
+        unset($validated['email']);
+        unset($validated['approval_status']);
+        unset($validated['is_active']);
+        unset($validated['trial_ends_at']);
 
         $validated['allow_manual_invoice_number'] = $request->has('allow_manual_invoice_number');
         $validated['enable_upi_qr'] = $request->has('enable_upi_qr');
@@ -127,6 +132,8 @@ class CompanySettingsController extends Controller
 
     public function sendTestMail(Request $request)
     {
+        abort_if(!auth()->user()->hasPermission('settings'), 403, 'Access denied: You do not have permission to send test emails.');
+
         $company = auth()->user()->company;
         $request->validate([
             'test_email' => ['required', 'email'],

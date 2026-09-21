@@ -21,8 +21,9 @@ class TaxReportController extends Controller
         $startDate = $month . '-01';
         $endDate = date('Y-t', strtotime($startDate)) . '-' . date('t', strtotime($startDate));
 
-        // Base invoices query (tax invoices only, excluding draft/cancelled)
-        $invoicesQuery = Invoice::where('type', '!=', 'proforma')
+        // Base invoices query (tax invoices only, excluding draft/cancelled, strictly scoped to company)
+        $invoicesQuery = Invoice::where('company_id', $company->id)
+            ->where('type', '!=', 'proforma')
             ->whereNotIn('status', ['draft', 'cancelled'])
             ->whereBetween('invoice_date', [$startDate, $endDate])
             ->with(['customer', 'items']);
@@ -35,9 +36,10 @@ class TaxReportController extends Controller
         // B2C: Unregistered / Retail Invoices (No GSTIN)
         $b2cInvoices = $invoices->filter(fn($inv) => empty($inv->customer?->gstin));
 
-        // Table 12: HSN / SAC Code Summary
-        $hsnSummary = InvoiceItem::whereHas('invoice', function ($q) use ($startDate, $endDate) {
-            $q->where('type', '!=', 'proforma')
+        // Table 12: HSN / SAC Code Summary - strictly scoped to company
+        $hsnSummary = InvoiceItem::whereHas('invoice', function ($q) use ($startDate, $endDate, $company) {
+            $q->where('company_id', $company->id)
+              ->where('type', '!=', 'proforma')
               ->whereNotIn('status', ['draft', 'cancelled'])
               ->whereBetween('invoice_date', [$startDate, $endDate]);
         })
@@ -76,11 +78,14 @@ class TaxReportController extends Controller
      */
     public function exportCsv(Request $request): StreamedResponse
     {
+        abort_if(!auth()->user()->hasPermission('reports'), 403, 'Access denied: You do not have permission to export GSTR-1 Tax Reports.');
+        $company = auth()->user()->company;
         $month = $request->get('month', now()->format('Y-m'));
         $startDate = $month . '-01';
         $endDate = date('Y-t', strtotime($startDate)) . '-' . date('t', strtotime($startDate));
 
-        $invoices = Invoice::where('type', '!=', 'proforma')
+        $invoices = Invoice::where('company_id', $company->id)
+            ->where('type', '!=', 'proforma')
             ->whereNotIn('status', ['draft', 'cancelled'])
             ->whereBetween('invoice_date', [$startDate, $endDate])
             ->with(['customer', 'items'])
@@ -91,11 +96,11 @@ class TaxReportController extends Controller
             'Content-Disposition' => 'attachment; filename="GSTR1_Export_' . $month . '.csv"',
         ];
 
-        return response()->stream(function () use ($invoices) {
+        return response()->stream(function () use ($invoices, $company) {
             $handle = fopen('php://output', 'w');
 
             // B2B Section
-            fputcsv($handle, ['--- GSTR-1 B2B TAX INVOICES ---']);
+            fputcsv($handle, ['--- GSTR-1 B2B TAX INVOICES (Software-Generated CA-Ready Report) ---']);
             fputcsv($handle, ['GSTIN/UIN of Recipient', 'Receiver Name', 'Invoice Number', 'Invoice Date', 'Invoice Value', 'Place of Supply', 'Reverse Charge', 'Invoice Type', 'Rate (%)', 'Taxable Value', 'Cess Amount']);
 
             foreach ($invoices->filter(fn($i) => !empty($i->customer?->gstin)) as $inv) {
@@ -105,7 +110,7 @@ class TaxReportController extends Controller
                     $inv->invoice_number,
                     $inv->invoice_date->format('d-M-Y'),
                     number_format($inv->total_amount, 2, '.', ''),
-                    $inv->customer->state ?? $inv->company->state,
+                    $inv->customer->state ?? $company->state,
                     'N',
                     'Regular',
                     ($inv->tax_mode === 'simple' ? '18' : 'Standard'),
@@ -121,7 +126,7 @@ class TaxReportController extends Controller
             foreach ($invoices->filter(fn($i) => empty($i->customer?->gstin)) as $inv) {
                 fputcsv($handle, [
                     'OE (Other than E-Commerce)',
-                    $inv->customer->state ?? $inv->company->state,
+                    $inv->customer->state ?? $company->state,
                     '18',
                     number_format($inv->taxable_amount, 2, '.', ''),
                     '0.00',

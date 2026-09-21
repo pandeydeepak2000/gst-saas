@@ -8,6 +8,8 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Product;
+use App\Models\InvoiceTransaction;
+use App\Models\EmailOtp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class MultiTenantSaaSTest extends TestCase
@@ -697,5 +699,362 @@ class MultiTenantSaaSTest extends TestCase
 
         $teamResp = $this->get('/team');
         $teamResp->assertStatus(403);
+    }
+
+    /**
+     * =========================================================================
+     * COMPREHENSIVE SECURITY HARDENING AUDIT TEST SUITE
+     * =========================================================================
+     */
+
+    public function test_cross_tenant_invoice_access_is_blocked(): void
+    {
+        $acmeUser = User::where('email', 'admin@acme.com')->first();
+        $bharatUser = User::where('email', 'admin@bharat.com')->first();
+
+        // Acme has invoice
+        $acmeInvoice = Invoice::where('company_id', $acmeUser->company_id)->first();
+        $this->assertNotNull($acmeInvoice);
+
+        // Bharat attempts to view Acme's invoice
+        $this->actingAs($bharatUser);
+
+        $viewResp = $this->get('/invoices/' . $acmeInvoice->id);
+        $this->assertTrue(in_array($viewResp->status(), [403, 404]));
+
+        $editResp = $this->get('/invoices/' . $acmeInvoice->id . '/edit');
+        $this->assertTrue(in_array($editResp->status(), [403, 404]));
+
+        $printResp = $this->get('/invoices/' . $acmeInvoice->id . '/print');
+        $this->assertTrue(in_array($printResp->status(), [403, 404]));
+    }
+
+    public function test_cross_tenant_invoice_update_and_delete_is_blocked(): void
+    {
+        $acmeUser = User::where('email', 'admin@acme.com')->first();
+        $bharatUser = User::where('email', 'admin@bharat.com')->first();
+
+        $acmeInvoice = Invoice::where('company_id', $acmeUser->company_id)->first();
+        $originalNumber = $acmeInvoice->invoice_number;
+
+        $this->actingAs($bharatUser);
+
+        // Attempt update
+        $updateResp = $this->put('/invoices/' . $acmeInvoice->id, [
+            'customer_id'    => 1,
+            'invoice_number' => 'HACKED-999',
+            'invoice_date'   => '2026-09-01',
+            'sale_type'      => 'LOCAL',
+            'tax_mode'       => 'simple',
+            'status'         => 'paid',
+            'items'          => [
+                [
+                    'description' => 'Tampered item',
+                    'quantity'    => 1,
+                    'unit'        => 'NOS',
+                    'rate'        => 100,
+                    'gst_percent' => 18,
+                ]
+            ]
+        ]);
+        $this->assertTrue(in_array($updateResp->status(), [403, 404]));
+
+        // Assert database was NOT modified
+        $freshAcmeInvoice = Invoice::withoutGlobalScopes()->find($acmeInvoice->id);
+        $this->assertEquals($originalNumber, $freshAcmeInvoice->invoice_number);
+
+        // Attempt delete
+        $deleteResp = $this->delete('/invoices/' . $acmeInvoice->id);
+        $this->assertTrue(in_array($deleteResp->status(), [403, 404]));
+        $this->assertFalse($freshAcmeInvoice->fresh()->trashed());
+
+        // Attempt mark as paid
+        $markPaidResp = $this->post('/invoices/' . $acmeInvoice->id . '/mark-as-paid');
+        $this->assertTrue(in_array($markPaidResp->status(), [403, 404]));
+    }
+
+    public function test_cross_tenant_customer_modification_is_blocked(): void
+    {
+        $acmeUser = User::where('email', 'admin@acme.com')->first();
+        $bharatUser = User::where('email', 'admin@bharat.com')->first();
+
+        $acmeCustomer = Customer::where('company_id', $acmeUser->company_id)->first();
+        $this->assertNotNull($acmeCustomer);
+        $originalName = $acmeCustomer->name;
+
+        $this->actingAs($bharatUser);
+
+        // Bharat attempts to update Acme's customer
+        $updateResp = $this->put('/customers/' . $acmeCustomer->id, [
+            'name'  => 'Hacked Customer Name',
+            'state' => 'Delhi',
+        ]);
+        $this->assertTrue(in_array($updateResp->status(), [403, 404]));
+
+        $freshCustomer = Customer::withoutGlobalScopes()->find($acmeCustomer->id);
+        $this->assertEquals($originalName, $freshCustomer->name);
+
+        // Bharat attempts to delete Acme's customer
+        $deleteResp = $this->delete('/customers/' . $acmeCustomer->id);
+        $this->assertTrue(in_array($deleteResp->status(), [403, 404]));
+        $this->assertFalse($freshCustomer->fresh()->trashed());
+    }
+
+    public function test_cross_tenant_product_modification_is_blocked(): void
+    {
+        $acmeUser = User::where('email', 'admin@acme.com')->first();
+        $bharatUser = User::where('email', 'admin@bharat.com')->first();
+
+        $acmeProduct = Product::where('company_id', $acmeUser->company_id)->first();
+        $this->assertNotNull($acmeProduct);
+        $originalRate = $acmeProduct->rate;
+
+        $this->actingAs($bharatUser);
+
+        // Bharat attempts to update Acme's product
+        $updateResp = $this->put('/products/' . $acmeProduct->id, [
+            'name'        => 'Hacked Product',
+            'unit'        => 'NOS',
+            'rate'        => 0.01,
+            'gst_percent' => 18,
+        ]);
+        $this->assertTrue(in_array($updateResp->status(), [403, 404]));
+
+        $freshProduct = Product::withoutGlobalScopes()->find($acmeProduct->id);
+        $this->assertEquals($originalRate, $freshProduct->rate);
+
+        // Bharat attempts to delete Acme's product
+        $deleteResp = $this->delete('/products/' . $acmeProduct->id);
+        $this->assertTrue(in_array($deleteResp->status(), [403, 404]));
+        $this->assertFalse($freshProduct->fresh()->trashed());
+    }
+
+    public function test_cross_tenant_payment_recording_and_deletion_is_blocked(): void
+    {
+        $acmeUser = User::where('email', 'admin@acme.com')->first();
+        $bharatUser = User::where('email', 'admin@bharat.com')->first();
+
+        $acmeInvoice = Invoice::where('company_id', $acmeUser->company_id)->first();
+
+        // Acme records a payment
+        $this->actingAs($acmeUser);
+        $this->post('/invoices/' . $acmeInvoice->id . '/payments', [
+            'amount'         => 100,
+            'payment_method' => 'cash',
+            'paid_at'        => now()->format('Y-m-d'),
+        ]);
+
+        $acmeTx = InvoiceTransaction::withoutGlobalScopes()->where('invoice_id', $acmeInvoice->id)->latest('id')->first();
+        $this->assertNotNull($acmeTx);
+
+        // Bharat attempts to record payment on Acme's invoice
+        $this->actingAs($bharatUser);
+        $recordResp = $this->post('/invoices/' . $acmeInvoice->id . '/payments', [
+            'amount'         => 50,
+            'payment_method' => 'cash',
+            'paid_at'        => now()->format('Y-m-d'),
+        ]);
+        $this->assertTrue(in_array($recordResp->status(), [403, 404]));
+
+        // Bharat attempts to delete Acme's transaction
+        $deleteResp = $this->delete('/payments/' . $acmeTx->id);
+        $this->assertTrue(in_array($deleteResp->status(), [403, 404]));
+
+        // Bharat attempts to view Acme's payment receipt voucher
+        $receiptResp = $this->get('/payments/' . $acmeTx->id . '/receipt');
+        $this->assertTrue(in_array($receiptResp->status(), [403, 404]));
+    }
+
+    public function test_cross_tenant_customer_cannot_be_associated_with_invoice(): void
+    {
+        $acmeUser = User::where('email', 'admin@acme.com')->first();
+        $bharatUser = User::where('email', 'admin@bharat.com')->first();
+
+        // Bharat has customer
+        $bharatCustomer = Customer::where('company_id', $bharatUser->company_id)->first();
+        $this->assertNotNull($bharatCustomer);
+
+        $this->actingAs($acmeUser);
+
+        // Acme attempts to create invoice with Bharat's customer
+        $resp = $this->post('/invoices', [
+            'customer_id'    => $bharatCustomer->id,
+            'invoice_number' => 'ACME-SEC-001',
+            'invoice_date'   => now()->format('Y-m-d'),
+            'sale_type'      => 'LOCAL',
+            'tax_mode'       => 'simple',
+            'status'         => 'draft',
+            'items'          => [
+                [
+                    'description' => 'Test Line Item',
+                    'quantity'    => 1,
+                    'unit'        => 'NOS',
+                    'rate'        => 500,
+                    'gst_percent' => 18,
+                ]
+            ]
+        ]);
+
+        $resp->assertSessionHasErrors('customer_id');
+        $this->assertDatabaseMissing('invoices', ['invoice_number' => 'ACME-SEC-001']);
+    }
+
+    public function test_rbac_blocked_routes_return_403_for_unauthorized_staff(): void
+    {
+        $acmeAdmin = User::where('email', 'admin@acme.com')->first();
+
+        // Create a staff user with ONLY 'invoices' permission
+        $staff = User::create([
+            'company_id'  => $acmeAdmin->company_id,
+            'name'        => 'Limited Staff User',
+            'email'       => 'limited@acme.com',
+            'password'    => bcrypt('password'),
+            'role'        => 'staff',
+            'permissions' => ['invoices'],
+            'is_active'   => true,
+        ]);
+
+        $this->actingAs($staff);
+
+        // Invoices module works
+        $invResp = $this->get('/invoices');
+        $invResp->assertStatus(200);
+
+        // Disallowed modules return HTTP 403 Forbidden
+        $settingsResp = $this->get('/settings');
+        $settingsResp->assertStatus(403);
+
+        $reportsResp = $this->get('/reports/gstr1');
+        $reportsResp->assertStatus(403);
+
+        $exportResp = $this->get('/reports/gstr1/export-csv');
+        $exportResp->assertStatus(403);
+
+        $teamResp = $this->get('/team');
+        $teamResp->assertStatus(403);
+
+        $customersResp = $this->get('/customers');
+        $customersResp->assertStatus(403);
+
+        $productsResp = $this->get('/products');
+        $productsResp->assertStatus(403);
+    }
+
+    public function test_otp_brute_force_lockout_after_5_failed_attempts(): void
+    {
+        $email = 'victim@securitytest.com';
+        $otp = EmailOtp::generateFor($email, true);
+
+        // Attempt 1 to 4 with wrong OTP
+        for ($i = 1; $i <= 4; $i++) {
+            $result = EmailOtp::verify($email, '0000');
+            $this->assertFalse($result);
+        }
+
+        $record = EmailOtp::where('email', $email)->first();
+        $this->assertNotNull($record);
+        $this->assertEquals(4, $record->attempts);
+
+        // 5th failed attempt -> OTP is permanently revoked/deleted
+        $fifth = EmailOtp::verify($email, '0000');
+        $this->assertFalse($fifth);
+
+        $this->assertDatabaseMissing('email_otps', ['email' => $email]);
+
+        // Even if the correct OTP is provided now, it is rejected
+        $lateAttempt = EmailOtp::verify($email, $otp);
+        $this->assertFalse($lateAttempt);
+    }
+
+    public function test_otp_server_side_resend_cooldown_enforced(): void
+    {
+        $email = 'cooldown@test.com';
+        $this->postJson('/register/send-otp', ['email' => $email])->assertStatus(200);
+
+        // Second request immediately should be rejected due to 60s cooldown
+        $second = $this->postJson('/register/send-otp', ['email' => $email]);
+        $second->assertStatus(429);
+        $this->assertFalse($second->json('success'));
+        $this->assertStringContainsString('wait', strtolower($second->json('message')));
+    }
+
+    public function test_company_billing_email_cannot_be_overwritten_via_settings(): void
+    {
+        $acmeAdmin = User::where('email', 'admin@acme.com')->first();
+        $company = $acmeAdmin->company;
+        $originalEmail = $company->email;
+
+        $this->actingAs($acmeAdmin);
+
+        // Submit settings update with a malicious new email
+        $response = $this->post('/settings', [
+            'name'                        => $company->name,
+            'email'                       => 'takeover@evil.com',
+            'state'                       => $company->state,
+            'tax_mode'                    => $company->tax_mode,
+            'invoice_prefix'              => $company->invoice_prefix,
+            'invoice_start_number'        => $company->invoice_start_number,
+        ]);
+
+        $response->assertSessionHas('success');
+
+        // Verify company email in DB remains intact
+        $freshCompany = Company::find($company->id);
+        $this->assertEquals($originalEmail, $freshCompany->email);
+        $this->assertNotEquals('takeover@evil.com', $freshCompany->email);
+    }
+
+    public function test_impersonation_full_audit_lifecycle(): void
+    {
+        $superAdmin = User::where('email', 'superadmin@gstsaas.com')->first();
+        $this->assertNotNull($superAdmin);
+
+        $bharatCompany = Company::where('slug', 'bharat-trade')->first();
+        $this->assertNotNull($bharatCompany);
+
+        $this->actingAs($superAdmin);
+
+        // 1. Super Admin starts impersonation
+        $startResp = $this->post('/super-admin/companies/' . $bharatCompany->id . '/impersonate');
+        $startResp->assertRedirect(route('dashboard'));
+
+        $this->assertEquals($superAdmin->id, session('impersonator_id'));
+        $this->assertNotEmpty(session('impersonation_token'));
+
+        $this->assertDatabaseHas('activity_logs', [
+            'action'    => 'impersonate_start',
+            'user_name' => $superAdmin->name,
+        ]);
+
+        // 2. Currently logged in as Bharat Admin
+        $currentAuth = auth()->user();
+        $this->assertEquals('company_admin', $currentAuth->role);
+        $this->assertEquals($bharatCompany->id, $currentAuth->company_id);
+
+        // 3. Stop impersonation
+        $stopResp = $this->post('/super-admin/stop-impersonate');
+        $stopResp->assertRedirect(route('superadmin.index'));
+
+        $this->assertNull(session('impersonator_id'));
+        $this->assertNull(session('impersonation_token'));
+
+        $this->assertDatabaseHas('activity_logs', [
+            'action'    => 'impersonate_end',
+            'user_name' => $superAdmin->name,
+        ]);
+
+        // Authenticated back as Super Admin
+        $this->assertEquals($superAdmin->id, auth()->id());
+    }
+
+    public function test_security_headers_are_present_on_response(): void
+    {
+        $response = $this->get('/login');
+        $response->assertStatus(200);
+
+        $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response->assertHeader('X-XSS-Protection', '1; mode=block');
+        $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     }
 }

@@ -66,7 +66,7 @@ class InvoiceController extends Controller
         $company = auth()->user()->company;
 
         $validated = $request->validate([
-            'customer_id'    => ['required', 'exists:customers,id'],
+            'customer_id'    => ['required', Rule::exists('customers', 'id')->where('company_id', $company->id)->whereNull('deleted_at')],
             'invoice_number' => [
                 'required',
                 'string',
@@ -218,9 +218,8 @@ class InvoiceController extends Controller
 
     public function show($id)
     {
-        $invoice = Invoice::withTrashed()
-            ->with(['customer', 'items', 'creator', 'transactions', 'company'])
-            ->findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $invoice = Invoice::withTrashed()->where('company_id', $companyId)->with(['customer', 'items', 'creator', 'transactions', 'company'])->findOrFail($id);
 
         $company = $invoice->company;
         $customer = $invoice->customer;
@@ -270,7 +269,8 @@ class InvoiceController extends Controller
 
     public function edit($id)
     {
-        $invoice = Invoice::with(['customer', 'items'])->findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $invoice = Invoice::where('company_id', $companyId)->with(['customer', 'items'])->findOrFail($id);
         $company = auth()->user()->company;
         $customers = Customer::orderBy('name')->get();
         $products = Product::where('is_active', true)->orderBy('name')->get();
@@ -295,11 +295,12 @@ class InvoiceController extends Controller
 
     public function update(Request $request, $id)
     {
-        $invoice = Invoice::findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $invoice = Invoice::where('company_id', $companyId)->findOrFail($id);
         $company = auth()->user()->company;
 
         $validated = $request->validate([
-            'customer_id'    => ['required', 'exists:customers,id'],
+            'customer_id'    => ['required', Rule::exists('customers', 'id')->where('company_id', $company->id)->whereNull('deleted_at')],
             'invoice_number' => [
                 'required',
                 'string',
@@ -428,7 +429,8 @@ class InvoiceController extends Controller
      */
     public function convertToTaxInvoice($id)
     {
-        $invoice = Invoice::findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $invoice = Invoice::where('company_id', $companyId)->findOrFail($id);
         $company = auth()->user()->company;
 
         if ($invoice->type !== 'proforma') {
@@ -453,7 +455,8 @@ class InvoiceController extends Controller
      */
     public function markAsPaid(Request $request, $id)
     {
-        $invoice = Invoice::findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $invoice = Invoice::where('company_id', $companyId)->findOrFail($id);
         $balance = $invoice->balance_amount > 0 ? $invoice->balance_amount : $invoice->total_amount;
 
         InvoiceTransaction::create([
@@ -476,7 +479,8 @@ class InvoiceController extends Controller
 
     public function destroy($id)
     {
-        $invoice = Invoice::findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $invoice = Invoice::where('company_id', $companyId)->findOrFail($id);
         $num = $invoice->invoice_number;
         $invoice->delete();
 
@@ -486,7 +490,8 @@ class InvoiceController extends Controller
 
     public function restore($id)
     {
-        $invoice = Invoice::onlyTrashed()->findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $invoice = Invoice::onlyTrashed()->where('company_id', $companyId)->findOrFail($id);
         $invoice->restore();
 
         ActivityLog::log('restore', 'invoice', "Restored invoice #{$invoice->invoice_number} from Trash.", $id);
@@ -495,7 +500,8 @@ class InvoiceController extends Controller
 
     public function forceDelete($id)
     {
-        $invoice = Invoice::onlyTrashed()->findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $invoice = Invoice::onlyTrashed()->where('company_id', $companyId)->findOrFail($id);
         $num = $invoice->invoice_number;
         $invoice->items()->delete();
         $invoice->forceDelete();
@@ -506,7 +512,8 @@ class InvoiceController extends Controller
 
     public function print($id)
     {
-        $invoice = Invoice::withTrashed()->with(['customer', 'items', 'company', 'transactions'])->findOrFail($id);
+        $companyId = auth()->user()->company_id;
+        $invoice = Invoice::withTrashed()->where('company_id', $companyId)->with(['customer', 'items', 'company', 'transactions'])->findOrFail($id);
         $company = $invoice->company;
         $customer = $invoice->customer;
 

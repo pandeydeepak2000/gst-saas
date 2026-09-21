@@ -14,6 +14,11 @@ class PaymentController extends Controller
      */
     public function recordPayment(Request $request, Invoice $invoice)
     {
+        $user = auth()->user();
+        if ($invoice->company_id !== $user->company_id && !$user->isSuperAdmin()) {
+            abort(403, 'Unauthorized invoice access: This invoice does not belong to your company.');
+        }
+
         $maxAmount = $invoice->balance_amount > 0 ? $invoice->balance_amount : $invoice->total_amount;
 
         $validated = $request->validate([
@@ -51,13 +56,20 @@ class PaymentController extends Controller
      */
     public function destroy(InvoiceTransaction $transaction)
     {
+        $user = auth()->user();
+        if ($transaction->company_id !== $user->company_id && !$user->isSuperAdmin()) {
+            abort(403, 'Unauthorized transaction access: This record does not belong to your company.');
+        }
+
         $invoice = $transaction->invoice;
         $amount = $transaction->amount;
         $transaction->delete();
 
-        $invoice->recalculatePaymentStatus();
+        if ($invoice) {
+            $invoice->recalculatePaymentStatus();
+        }
 
-        ActivityLog::log('delete', 'payment', "Cancelled payment transaction of ₹" . number_format($amount, 2) . " on Invoice #" . $invoice->invoice_number);
+        ActivityLog::log('delete', 'payment', "Cancelled payment transaction of ₹" . number_format($amount, 2) . ($invoice ? " on Invoice #" . $invoice->invoice_number : ""));
 
         return back()->with('success', 'Payment transaction deleted and invoice balance recalculated.');
     }
@@ -67,6 +79,11 @@ class PaymentController extends Controller
      */
     public function receipt(InvoiceTransaction $transaction)
     {
+        $user = auth()->user();
+        if ($transaction->company_id !== $user->company_id && !$user->isSuperAdmin()) {
+            abort(403, 'Unauthorized receipt access: This voucher does not belong to your company.');
+        }
+
         $invoice = $transaction->invoice()->with(['customer', 'company'])->firstOrFail();
         return view('payments.receipt', compact('transaction', 'invoice'));
     }

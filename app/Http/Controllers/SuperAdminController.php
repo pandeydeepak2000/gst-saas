@@ -225,8 +225,30 @@ class SuperAdminController extends Controller
             return back()->withErrors(['error' => 'No admin user found for this company.']);
         }
 
-        // Store original super admin id in session
-        session(['impersonator_id' => auth()->id()]);
+        $superAdmin = auth()->user();
+
+        // Secure tokenized impersonation session
+        $token = \Illuminate\Support\Str::random(40);
+        session([
+            'impersonator_id'          => $superAdmin->id,
+            'impersonated_company_id'  => $company->id,
+            'impersonated_user_id'     => $companyAdmin->id,
+            'impersonation_token'      => $token,
+            'impersonation_started_at' => now()->toIso8601String(),
+            'impersonation_ip'         => request()->ip(),
+            'impersonation_ua'         => request()->userAgent(),
+        ]);
+
+        ActivityLog::create([
+            'company_id'  => $company->id,
+            'user_id'     => $superAdmin->id,
+            'user_name'   => $superAdmin->name,
+            'role'        => 'super_admin',
+            'action'      => 'impersonate_start',
+            'module'      => 'superadmin',
+            'description' => "Super Admin '{$superAdmin->name}' started impersonation of company '{$company->name}' as '{$companyAdmin->name}'. (IP: " . request()->ip() . ")",
+        ]);
+
         Auth::login($companyAdmin);
 
         return redirect()->route('dashboard')->with('info', "You are now impersonating {$company->name} as {$companyAdmin->name}.");
@@ -235,12 +257,41 @@ class SuperAdminController extends Controller
     public function stopImpersonate()
     {
         $impersonatorId = session('impersonator_id');
-        if (!$impersonatorId) {
+        $token = session('impersonation_token');
+
+        if (!$impersonatorId || !$token) {
             return redirect()->route('dashboard');
         }
 
-        $superAdmin = User::findOrFail($impersonatorId);
-        session()->forget('impersonator_id');
+        $superAdmin = User::where('id', $impersonatorId)->where('role', 'super_admin')->first();
+        if (!$superAdmin) {
+            session()->flush();
+            return redirect()->route('login')->withErrors(['error' => 'Invalid impersonation session.']);
+        }
+
+        $impersonatedCompanyId = session('impersonated_company_id');
+
+        // Clear all impersonation markers
+        session()->forget([
+            'impersonator_id',
+            'impersonated_company_id',
+            'impersonated_user_id',
+            'impersonation_token',
+            'impersonation_started_at',
+            'impersonation_ip',
+            'impersonation_ua',
+        ]);
+
+        ActivityLog::create([
+            'company_id'  => $impersonatedCompanyId,
+            'user_id'     => $superAdmin->id,
+            'user_name'   => $superAdmin->name,
+            'role'        => 'super_admin',
+            'action'      => 'impersonate_end',
+            'module'      => 'superadmin',
+            'description' => "Super Admin '{$superAdmin->name}' exited impersonation session.",
+        ]);
+
         Auth::login($superAdmin);
 
         return redirect()->route('superadmin.index')->with('success', 'Returned to Super Admin control panel.');

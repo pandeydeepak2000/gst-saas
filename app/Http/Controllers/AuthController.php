@@ -71,7 +71,16 @@ class AuthController extends Controller
         ]);
 
         $email = strtolower(trim($validated['email']));
-        $otp = EmailOtp::generateFor($email);
+
+        try {
+            // Generates 4-digit code, enforces 60s cooldown, 10m expiry
+            $otp = EmailOtp::generateFor($email);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 429);
+        }
 
         try {
             Mail::raw("Your GST-SaaS business onboarding verification code is: {$otp}\n\nThis 4-digit code expires in 10 minutes. Do not share this OTP with anyone.", function ($message) use ($email) {
@@ -84,7 +93,8 @@ class AuthController extends Controller
         return response()->json([
             'success'     => true,
             'message'     => "Verification code sent to {$email}.",
-            'otp_preview' => (app()->isLocal() || config('app.show_demo_accounts')) ? $otp : null,
+            // NEVER reveal OTP in production! Only in local development environment
+            'otp_preview' => app()->isLocal() ? $otp : null,
         ]);
     }
 

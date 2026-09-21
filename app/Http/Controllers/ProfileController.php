@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
@@ -123,6 +124,12 @@ class ProfileController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
+        // Invalidate any active password reset tokens for this user
+        DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+
+        // Regenerate session ID to prevent fixation
+        $request->session()->regenerate();
+
         ActivityLog::log('security', 'auth', "User '{$user->name}' changed their password.");
 
         return back()->with('success', 'Your password has been changed successfully!');
@@ -137,8 +144,9 @@ class ProfileController extends Controller
             return back()->with('warning', 'Company profile not found.');
         }
 
+        // Restrict to safe raster images: no raw SVG XSS vectors
         $validated = $request->validate([
-            'signature_file'         => ['nullable', 'image', 'mimes:jpeg,png,jpg,svg', 'max:2048'],
+            'signature_file'         => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
             'digital_signature_text' => ['nullable', 'string', 'max:255'],
         ]);
 

@@ -10,7 +10,8 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Customer::query();
+        $companyId = auth()->user()->company_id;
+        $query = Customer::where('company_id', $companyId);
 
         if ($request->filled('search')) {
             $s = $request->search;
@@ -40,6 +41,7 @@ class CustomerController extends Controller
             'pincode'          => ['nullable', 'string', 'max:10'],
         ]);
 
+        // Server-side assignment only
         $validated['company_id'] = auth()->user()->company_id;
         if (!empty($validated['gstin'])) {
             $validated['gstin'] = strtoupper($validated['gstin']);
@@ -57,6 +59,11 @@ class CustomerController extends Controller
 
     public function update(Request $request, Customer $customer)
     {
+        $user = auth()->user();
+        if ($customer->company_id !== $user->company_id && !$user->isSuperAdmin()) {
+            abort(403, 'Unauthorized customer access: This client does not belong to your company.');
+        }
+
         $validated = $request->validate([
             'name'             => ['required', 'string', 'max:255'],
             'company_name'     => ['nullable', 'string', 'max:255'],
@@ -68,6 +75,9 @@ class CustomerController extends Controller
             'city'             => ['nullable', 'string', 'max:100'],
             'pincode'          => ['nullable', 'string', 'max:10'],
         ]);
+
+        // Ensure company_id cannot be overwritten
+        unset($validated['company_id']);
 
         if (!empty($validated['gstin'])) {
             $validated['gstin'] = strtoupper($validated['gstin']);
@@ -81,6 +91,11 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
+        $user = auth()->user();
+        if ($customer->company_id !== $user->company_id && !$user->isSuperAdmin()) {
+            abort(403, 'Unauthorized customer access: This client does not belong to your company.');
+        }
+
         $name = $customer->name;
         $customer->delete();
         ActivityLog::log('delete', 'customer', "Soft deleted customer: {$name}");

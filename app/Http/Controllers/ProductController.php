@@ -10,7 +10,8 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::query();
+        $companyId = auth()->user()->company_id;
+        $query = Product::where('company_id', $companyId);
 
         if ($request->filled('search')) {
             $s = $request->search;
@@ -22,7 +23,7 @@ class ProductController extends Controller
         }
 
         $products = $query->latest('id')->paginate(15);
-        $totalProducts = Product::count();
+        $totalProducts = Product::where('company_id', $companyId)->count();
 
         return view('products.index', compact('products', 'totalProducts'));
     }
@@ -52,6 +53,11 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        $user = auth()->user();
+        if ($product->company_id !== $user->company_id && !$user->isSuperAdmin()) {
+            abort(403, 'Unauthorized product access: This item does not belong to your company.');
+        }
+
         $validated = $request->validate([
             'name'        => ['required', 'string', 'max:255'],
             'hsn_sac'    => ['nullable', 'string', 'max:20'],
@@ -61,6 +67,8 @@ class ProductController extends Controller
             'description' => ['nullable', 'string'],
         ]);
 
+        unset($validated['company_id']);
+
         $product->update($validated);
         ActivityLog::log('update', 'product', "Updated product '{$product->name}' details.", $product->id);
 
@@ -69,6 +77,11 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        $user = auth()->user();
+        if ($product->company_id !== $user->company_id && !$user->isSuperAdmin()) {
+            abort(403, 'Unauthorized product access: This item does not belong to your company.');
+        }
+
         $name = $product->name;
         $product->delete();
 
@@ -81,7 +94,12 @@ class ProductController extends Controller
      */
     public function apiSearch(Request $request)
     {
-        $query = Product::where('is_active', true);
+        $user = auth()->user();
+        if (!$user->hasPermission('invoices') && !$user->hasPermission('products')) {
+            abort(403, 'Unauthorized autocomplete access.');
+        }
+
+        $query = Product::where('company_id', $user->company_id)->where('is_active', true);
 
         if ($request->filled('q')) {
             $s = $request->q;
