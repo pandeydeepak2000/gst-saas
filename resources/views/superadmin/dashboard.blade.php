@@ -1,4 +1,4 @@
-﻿<x-app-layout header="Global SaaS Platform Control Center">
+<x-app-layout header="Global SaaS Platform Control Center">
     <div class="space-y-6" x-data="{ currentTab: '{{ request('tab', 'directory') }}' }">
         
         <!-- Super Admin Hero -->
@@ -37,7 +37,7 @@
                             {{ $pendingApprovalsCount }} Pending Approvals
                         </button>
                     @endif
-                    <button type="button" @click="showOnboardModal = true" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2">
+                    <button type="button" @click="$dispatch('open-onboard-modal'); showOnboardModal = true" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2">
                         <span>+</span> Onboard New Company
                     </button>
                 </div>
@@ -240,7 +240,12 @@
                             @empty
                             <tr>
                                 <td colspan="8" class="text-center py-12 text-slate-400">
-                                    No tenant companies found matching your query.
+                                    <div class="max-w-sm mx-auto space-y-3">
+                                        <p class="text-sm">No tenant companies found matching your query.</p>
+                                        <button type="button" @click="$dispatch('open-onboard-modal'); showOnboardModal = true" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-md transition-all">
+                                            <span>+</span> Onboard New Company
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             @endforelse

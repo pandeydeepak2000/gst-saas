@@ -140,6 +140,8 @@ class SuperAdminController extends Controller
                     'gstin' => 'Please enter a valid 15-character Indian GSTIN format (e.g. 07AAAAA0000A1Z5) or leave empty.',
                 ]);
             }
+        } else {
+            $gstin = null;
         }
 
         // Generate clean unique company slug
@@ -151,14 +153,15 @@ class SuperAdminController extends Controller
         }
 
         // Generate prefix from initials
-        $words = explode(' ', trim($validated['company_name']));
+        $words = preg_split('/[\s\-_]+/', trim($validated['company_name']));
         $prefix = '';
         foreach ($words as $w) {
             if (!empty($w)) {
                 $prefix .= strtoupper(substr($w, 0, 1));
             }
         }
-        $prefix = substr($prefix, 0, 4) . '-';
+        $prefix = substr($prefix, 0, 4);
+        $prefix = (!empty($prefix) ? $prefix : 'INV') . '-';
 
         $company = Company::create([
             'name'                        => $validated['company_name'],
@@ -167,7 +170,7 @@ class SuperAdminController extends Controller
             'email'                       => strtolower(trim($validated['email'])),
             'phone'                       => $validated['phone'] ?? null,
             'state'                       => $validated['state'],
-            'gstin'                       => strtoupper($validated['gstin'] ?? ''),
+            'gstin'                       => $gstin,
             'tax_mode'                    => $validated['tax_mode'],
             'invoice_prefix'              => $prefix,
             'invoice_start_number'        => 1,
@@ -231,6 +234,7 @@ class SuperAdminController extends Controller
             'approval_status' => 'approved',
             'is_active'       => true,
         ]);
+        $company->users()->update(['is_active' => true]);
 
         ActivityLog::create([
             'company_id'  => $company->id,
@@ -253,6 +257,7 @@ class SuperAdminController extends Controller
             'approval_status' => 'rejected',
             'is_active'       => false,
         ]);
+        $company->users()->update(['is_active' => false]);
 
         ActivityLog::create([
             'company_id'  => $company->id,

@@ -1089,11 +1089,92 @@ class MultiTenantSaaSTest extends TestCase
         $this->assertEquals($company->id, $admin->company_id);
         $this->assertEquals('company_admin', $admin->role);
         $this->assertTrue($admin->is_active);
+        $this->assertNotNull($admin->email_verified_at);
 
         $this->assertDatabaseHas('activity_logs', [
             'action'    => 'company_onboarded',
             'user_name' => $superAdmin->name,
         ]);
+    }
+
+    public function test_superadmin_onboarding_validation_and_optional_gstin(): void
+    {
+        $superAdmin = User::where('email', 'superadmin@gstsaas.com')->first();
+        $this->actingAs($superAdmin);
+
+        // 1. Invalid GSTIN format rejection
+        $response = $this->post(route('superadmin.companies.store'), [
+            'company_name'  => 'Invalid GSTIN Corp',
+            'admin_name'    => 'Tester',
+            'email'         => 'valid_email@test.com',
+            'password'      => 'SecurePassword123!',
+            'state'         => 'Delhi',
+            'gstin'         => 'INVALID_GSTIN_123',
+            'tax_mode'      => 'detailed',
+        ]);
+        $response->assertSessionHasErrors('gstin');
+
+        // 2. Duplicate email rejection
+        $response2 = $this->post(route('superadmin.companies.store'), [
+            'company_name'  => 'Duplicate Email Corp',
+            'admin_name'    => 'Duplicate',
+            'email'         => 'admin@acme.com', // existing user
+            'password'      => 'SecurePassword123!',
+            'state'         => 'Delhi',
+            'tax_mode'      => 'simple',
+        ]);
+        $response2->assertSessionHasErrors('email');
+
+        // 3. Successful creation without GSTIN (stores null instead of empty string)
+        $response3 = $this->post(route('superadmin.companies.store'), [
+            'company_name'  => 'Zero GST Freelancer Studio',
+            'admin_name'    => 'Free Lancer',
+            'email'         => 'freelance@zerogst.com',
+            'password'      => 'SecurePassword123!',
+            'state'         => 'Maharashtra',
+            'gstin'         => '',
+            'tax_mode'      => 'simple',
+        ]);
+        $response3->assertRedirect(route('superadmin.index'));
+        $created = Company::where('name', 'Zero GST Freelancer Studio')->first();
+        $this->assertNotNull($created);
+        $this->assertNull($created->gstin);
+        $this->assertEquals('ZGFS-', $created->invoice_prefix);
+    }
+
+    public function test_superadmin_approval_and_rejection_toggles_company_users(): void
+    {
+        $superAdmin = User::where('email', 'superadmin@gstsaas.com')->first();
+        $this->actingAs($superAdmin);
+
+        $company = Company::create([
+            'name'            => 'Pending Activation Co',
+            'slug'            => 'pending-activation-co',
+            'state'           => 'Delhi',
+            'approval_status' => 'pending',
+            'is_active'       => false,
+        ]);
+
+        $user = User::create([
+            'name'       => 'Pending Admin',
+            'email'      => 'admin@pendingco.com',
+            'password'   => 'password123',
+            'company_id' => $company->id,
+            'role'       => 'company_admin',
+            'is_active'  => false,
+        ]);
+
+        // Approve
+        $this->post(route('superadmin.approve_company', $company->id));
+        $this->assertTrue((bool) $company->fresh()->is_active);
+        $this->assertEquals('approved', $company->fresh()->approval_status);
+        $this->assertTrue((bool) $user->fresh()->is_active);
+
+        // Reject
+        $this->post(route('superadmin.reject_company', $company->id));
+        $this->assertFalse((bool) $company->fresh()->is_active);
+        $this->assertEquals('rejected', $company->fresh()->approval_status);
+        $this->assertFalse((bool) $user->fresh()->is_active);
     }
 
     public function test_users_can_toggle_2fa_in_profile_across_all_roles(): void

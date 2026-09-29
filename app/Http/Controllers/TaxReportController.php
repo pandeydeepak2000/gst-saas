@@ -19,7 +19,7 @@ class TaxReportController extends Controller
         $month = $request->get('month', now()->format('Y-m'));
 
         $startDate = $month . '-01';
-        $endDate = date('Y-t', strtotime($startDate)) . '-' . date('t', strtotime($startDate));
+        $endDate = date('Y-m-t', strtotime($startDate));
 
         // Base invoices query (tax invoices only, excluding draft/cancelled, strictly scoped to company)
         $invoicesQuery = Invoice::where('company_id', $company->id)
@@ -82,7 +82,7 @@ class TaxReportController extends Controller
         $company = auth()->user()->company;
         $month = $request->get('month', now()->format('Y-m'));
         $startDate = $month . '-01';
-        $endDate = date('Y-t', strtotime($startDate)) . '-' . date('t', strtotime($startDate));
+        $endDate = date('Y-m-t', strtotime($startDate));
 
         $invoices = Invoice::where('company_id', $company->id)
             ->where('type', '!=', 'proforma')

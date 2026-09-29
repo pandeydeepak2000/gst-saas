@@ -13,7 +13,7 @@
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="h-full font-sans antialiased text-slate-800" x-data="{ mobileSidebarOpen: false, showImpersonateModal: false, showOnboardModal: false }" @open-onboard-modal.window="showOnboardModal = true">
+<body class="h-full font-sans antialiased text-slate-800" x-data="{ mobileSidebarOpen: false, showImpersonateModal: false, showOnboardModal: {{ ($errors->has('company_name') || $errors->has('email') || $errors->has('gstin') || $errors->has('admin_name') || $errors->has('password') || old('company_name')) ? 'true' : 'false' }} }" @open-onboard-modal.window="showOnboardModal = true">
     @php
         $user = auth()->user();
         $isSuperAdmin = $user && $user->isSuperAdmin() && !session('impersonator_id');
@@ -145,6 +145,14 @@
                             <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">SETUP</span>
                         @endif
                     </a>
+
+                    <div class="pt-3">
+                        <button type="button" @click="$dispatch('open-onboard-modal'); showOnboardModal = true; mobileSidebarOpen = false" 
+                                class="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 transition-all">
+                            <span>+</span>
+                            <span>Onboard New Tenant</span>
+                        </button>
+                    </div>
 
                     <a href="{{ route('superadmin.index', ['tab' => 'policies']) }}" 
                        class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all {{ request()->get('tab') === 'policies' ? 'bg-amber-500 text-slate-950 shadow-md font-black' : 'text-slate-300 hover:bg-slate-900 hover:text-white' }}">
@@ -324,8 +332,7 @@
 
                 <div class="flex items-center gap-3">
                     @if($isSuperAdmin)
-                        <!-- SUPER ADMIN CONTROLS (NO BROKEN TENANT INVOICE BUTTON) -->
-                        <button type="button" @click="showOnboardModal = true" 
+                        <button type="button" @click="$dispatch('open-onboard-modal'); showOnboardModal = true" 
                                 class="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition-all">
                             <span>+ Onboard Company</span>
                         </button>
@@ -464,6 +471,19 @@
                 <form action="{{ route('superadmin.companies.store') }}" method="POST" class="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
                     @csrf
 
+                    @if($errors->any())
+                    <div class="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+                        <div class="font-bold flex items-center gap-1.5 mb-1 text-rose-900">
+                            <span>⚠️</span> Onboarding Validation Errors:
+                        </div>
+                        <ul class="list-disc list-inside space-y-0.5 text-[11px] text-rose-700">
+                            @foreach($errors->all() as $err)
+                                <li>{{ $err }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endif
+
                     <!-- 1. Company Information -->
                     <div>
                         <h4 class="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
@@ -472,57 +492,69 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div class="sm:col-span-2">
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Company Legal Name *</label>
-                                <input type="text" name="company_name" required placeholder="e.g. Zenith Tech Solutions Pvt Ltd"
-                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <input type="text" name="company_name" required value="{{ old('company_name') }}" placeholder="e.g. Zenith Tech Solutions Pvt Ltd"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border {{ $errors->has('company_name') ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300' }} text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                @error('company_name')
+                                    <p class="text-rose-600 text-xs mt-1 font-semibold">{{ $message }}</p>
+                                @enderror
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Industry / Business Type</label>
                                 <select name="industry_type" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                                    <option value="IT & Software Services">IT & Software Services</option>
-                                    <option value="Web Agency & Freelancing">Web Agency & Freelancing</option>
-                                    <option value="Wholesale & Distribution">Wholesale & Distribution</option>
-                                    <option value="Retail & E-Commerce">Retail & E-Commerce</option>
-                                    <option value="Consulting & CA Practice">Consulting & CA Practice</option>
-                                    <option value="Manufacturing & Fabrication">Manufacturing & Fabrication</option>
-                                    <option value="General Business">General Business / Other</option>
+                                    @php $ind = old('industry_type', 'General Business'); @endphp
+                                    <option value="IT & Software Services" {{ $ind === 'IT & Software Services' ? 'selected' : '' }}>IT & Software Services</option>
+                                    <option value="Web Agency & Freelancing" {{ $ind === 'Web Agency & Freelancing' ? 'selected' : '' }}>Web Agency & Freelancing</option>
+                                    <option value="Wholesale & Distribution" {{ $ind === 'Wholesale & Distribution' ? 'selected' : '' }}>Wholesale & Distribution</option>
+                                    <option value="Retail & E-Commerce" {{ $ind === 'Retail & E-Commerce' ? 'selected' : '' }}>Retail & E-Commerce</option>
+                                    <option value="Consulting & CA Practice" {{ $ind === 'Consulting & CA Practice' ? 'selected' : '' }}>Consulting & CA Practice</option>
+                                    <option value="Manufacturing & Fabrication" {{ $ind === 'Manufacturing & Fabrication' ? 'selected' : '' }}>Manufacturing & Fabrication</option>
+                                    <option value="General Business" {{ $ind === 'General Business' ? 'selected' : '' }}>General Business / Other</option>
                                 </select>
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">State / Place of Supply *</label>
-                                <select name="state" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                                    <option value="Delhi">Delhi (07)</option>
-                                    <option value="Maharashtra">Maharashtra (27)</option>
-                                    <option value="Karnataka">Karnataka (29)</option>
-                                    <option value="Uttar Pradesh">Uttar Pradesh (09)</option>
-                                    <option value="Gujarat">Gujarat (24)</option>
-                                    <option value="Tamil Nadu">Tamil Nadu (33)</option>
-                                    <option value="Rajasthan">Rajasthan (08)</option>
-                                    <option value="West Bengal">West Bengal (19)</option>
-                                    <option value="Telangana">Telangana (36)</option>
-                                    <option value="Haryana">Haryana (06)</option>
-                                    <option value="Kerala">Kerala (32)</option>
-                                    <option value="Madhya Pradesh">Madhya Pradesh (23)</option>
-                                    <option value="Punjab">Punjab (03)</option>
-                                    <option value="Bihar">Bihar (10)</option>
-                                    <option value="Odisha">Odisha (21)</option>
-                                    <option value="Assam">Assam (18)</option>
-                                    <option value="Other">Other State</option>
+                                <select name="state" required class="w-full px-3.5 py-2.5 rounded-xl border {{ $errors->has('state') ? 'border-rose-400' : 'border-slate-300' }} text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                    @php $st = old('state', 'Delhi'); @endphp
+                                    <option value="Delhi" {{ $st === 'Delhi' ? 'selected' : '' }}>Delhi (07)</option>
+                                    <option value="Maharashtra" {{ $st === 'Maharashtra' ? 'selected' : '' }}>Maharashtra (27)</option>
+                                    <option value="Karnataka" {{ $st === 'Karnataka' ? 'selected' : '' }}>Karnataka (29)</option>
+                                    <option value="Uttar Pradesh" {{ $st === 'Uttar Pradesh' ? 'selected' : '' }}>Uttar Pradesh (09)</option>
+                                    <option value="Gujarat" {{ $st === 'Gujarat' ? 'selected' : '' }}>Gujarat (24)</option>
+                                    <option value="Tamil Nadu" {{ $st === 'Tamil Nadu' ? 'selected' : '' }}>Tamil Nadu (33)</option>
+                                    <option value="Rajasthan" {{ $st === 'Rajasthan' ? 'selected' : '' }}>Rajasthan (08)</option>
+                                    <option value="West Bengal" {{ $st === 'West Bengal' ? 'selected' : '' }}>West Bengal (19)</option>
+                                    <option value="Telangana" {{ $st === 'Telangana' ? 'selected' : '' }}>Telangana (36)</option>
+                                    <option value="Haryana" {{ $st === 'Haryana' ? 'selected' : '' }}>Haryana (06)</option>
+                                    <option value="Kerala" {{ $st === 'Kerala' ? 'selected' : '' }}>Kerala (32)</option>
+                                    <option value="Madhya Pradesh" {{ $st === 'Madhya Pradesh' ? 'selected' : '' }}>Madhya Pradesh (23)</option>
+                                    <option value="Punjab" {{ $st === 'Punjab' ? 'selected' : '' }}>Punjab (03)</option>
+                                    <option value="Bihar" {{ $st === 'Bihar' ? 'selected' : '' }}>Bihar (10)</option>
+                                    <option value="Odisha" {{ $st === 'Odisha' ? 'selected' : '' }}>Odisha (21)</option>
+                                    <option value="Assam" {{ $st === 'Assam' ? 'selected' : '' }}>Assam (18)</option>
+                                    <option value="Other" {{ $st === 'Other' ? 'selected' : '' }}>Other State</option>
                                 </select>
+                                @error('state')
+                                    <p class="text-rose-600 text-xs mt-1 font-semibold">{{ $message }}</p>
+                                @enderror
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">GSTIN Number (Optional)</label>
-                                <input type="text" name="gstin" maxlength="15" placeholder="e.g. 07AAAAA0000A1Z5"
-                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm font-mono uppercase focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <input type="text" name="gstin" maxlength="15" value="{{ old('gstin') }}" placeholder="e.g. 07AAAAA0000A1Z5"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border {{ $errors->has('gstin') ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300' }} text-slate-900 text-sm font-mono uppercase focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                @error('gstin')
+                                    <p class="text-rose-600 text-xs mt-1 font-semibold">{{ $message }}</p>
+                                @enderror
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Default GST Tax Mode *</label>
                                 <select name="tax_mode" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                                    <option value="detailed">Split CGST & SGST (Detailed Indian Statutory)</option>
-                                    <option value="simple">Simple Flat 18% Single Line (IT/SaaS/Quick)</option>
+                                    @php $tm = old('tax_mode', 'detailed'); @endphp
+                                    <option value="detailed" {{ $tm === 'detailed' ? 'selected' : '' }}>Split CGST & SGST (Detailed Indian Statutory)</option>
+                                    <option value="simple" {{ $tm === 'simple' ? 'selected' : '' }}>Simple Flat 18% Single Line (IT/SaaS/Quick)</option>
                                 </select>
                             </div>
                         </div>
@@ -536,27 +568,39 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Admin Full Name *</label>
-                                <input type="text" name="admin_name" required placeholder="e.g. Rahul Sharma"
-                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <input type="text" name="admin_name" required value="{{ old('admin_name') }}" placeholder="e.g. Rahul Sharma"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border {{ $errors->has('admin_name') ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300' }} text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                @error('admin_name')
+                                    <p class="text-rose-600 text-xs mt-1 font-semibold">{{ $message }}</p>
+                                @enderror
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Admin Login Email *</label>
-                                <input type="email" name="email" required placeholder="admin@company.com"
-                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <input type="email" name="email" required value="{{ old('email') }}" placeholder="admin@company.com"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border {{ $errors->has('email') ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300' }} text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                @error('email')
+                                    <p class="text-rose-600 text-xs mt-1 font-semibold">{{ $message }}</p>
+                                @enderror
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Login Password * (Min 8 chars)</label>
-                                <input type="password" name="password" required value="password123" placeholder="Min 8 characters"
-                                       class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <input type="password" name="password" required value="{{ old('password', 'password123') }}" placeholder="Min 8 characters"
+                                       class="w-full px-3.5 py-2.5 rounded-xl border {{ $errors->has('password') ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300' }} text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                                 <p class="text-[11px] text-slate-400 mt-1">Default: <code>password123</code></p>
+                                @error('password')
+                                    <p class="text-rose-600 text-xs mt-1 font-semibold">{{ $message }}</p>
+                                @enderror
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Phone Number (Optional)</label>
-                                <input type="text" name="phone" placeholder="+91 98765 43210"
+                                <input type="text" name="phone" value="{{ old('phone') }}" placeholder="+91 98765 43210"
                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                @error('phone')
+                                    <p class="text-rose-600 text-xs mt-1 font-semibold">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
                     </div>
