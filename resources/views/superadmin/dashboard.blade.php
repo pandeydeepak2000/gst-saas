@@ -680,7 +680,7 @@
                             @csrf
                             <div>
                                 <label class="text-xs font-bold text-slate-700">Recipient Email Address</label>
-                                <input type="email" name="test_email" value="{{ auth()->user()->email }}" required placeholder="youremail@domain.com"
+                                <input type="email" name="test_email" value="{{ \App\Models\PlatformSetting::get('platform_mail_from_address') ?: auth()->user()->email }}" required placeholder="youremail@domain.com"
                                        class="w-full mt-1 text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
                             </div>
                             <button type="submit" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2">

@@ -18,12 +18,20 @@ class TenantMailService
             return false;
         }
 
+        $port = (int)($company->mail_port ?: 587);
+        $isSsl = ($company->mail_encryption === 'ssl' || $port == 465);
+        $scheme = $isSsl ? 'smtps' : 'smtp';
+
         Config::set('mail.default', 'smtp');
+        Config::set('mail.mailers.smtp.transport', 'smtp');
+        Config::set('mail.mailers.smtp.scheme', $scheme);
         Config::set('mail.mailers.smtp.host', $company->mail_host);
-        Config::set('mail.mailers.smtp.port', (int)($company->mail_port ?: 587));
+        Config::set('mail.mailers.smtp.port', $port ?: ($isSsl ? 465 : 587));
         Config::set('mail.mailers.smtp.username', $company->mail_username);
         Config::set('mail.mailers.smtp.password', $company->mail_password);
-        Config::set('mail.mailers.smtp.encryption', $company->mail_encryption === 'none' ? null : ($company->mail_encryption ?: 'tls'));
+        Config::set('mail.mailers.smtp.encryption', $company->mail_encryption === 'none' ? null : ($company->mail_encryption ?: ($isSsl ? 'ssl' : 'tls')));
+        Config::set('mail.mailers.smtp.verify_peer', false);
+        Config::set('mail.mailers.smtp.timeout', 15);
 
         $fromAddress = $company->mail_from_address ?: $company->email;
         $fromName = $company->mail_from_name ?: $company->name;

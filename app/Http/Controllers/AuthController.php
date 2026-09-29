@@ -233,7 +233,11 @@ class AuthController extends Controller
                 $message->to($email)->subject("Your 4-Digit Onboarding Code - GST-SaaS");
             });
         } catch (\Throwable $e) {
-            Log::warning("Could not send onboarding OTP to {$email}: " . $e->getMessage());
+            Log::error("Could not send onboarding OTP to {$email}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to send verification email: ' . $e->getMessage(),
+            ], 500);
         }
 
         return response()->json([

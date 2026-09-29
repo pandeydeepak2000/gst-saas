@@ -36,12 +36,19 @@ class PlatformMailService
         $fromAddress = PlatformSetting::get('platform_mail_from_address');
         $fromName = PlatformSetting::get('platform_mail_from_name', 'GST-SaaS Platform');
 
+        $isSsl = ($encryption === 'ssl' || $port == 465);
+        $scheme = $isSsl ? 'smtps' : 'smtp';
+
         Config::set('mail.default', 'smtp');
+        Config::set('mail.mailers.smtp.transport', 'smtp');
+        Config::set('mail.mailers.smtp.scheme', $scheme);
         Config::set('mail.mailers.smtp.host', $host);
-        Config::set('mail.mailers.smtp.port', $port ?: 587);
+        Config::set('mail.mailers.smtp.port', $port ?: ($isSsl ? 465 : 587));
         Config::set('mail.mailers.smtp.username', $username);
         Config::set('mail.mailers.smtp.password', $password);
-        Config::set('mail.mailers.smtp.encryption', $encryption === 'none' ? null : ($encryption ?: 'tls'));
+        Config::set('mail.mailers.smtp.encryption', $encryption === 'none' ? null : ($encryption ?: ($isSsl ? 'ssl' : 'tls')));
+        Config::set('mail.mailers.smtp.verify_peer', false);
+        Config::set('mail.mailers.smtp.timeout', 15);
 
         if (!empty($fromAddress)) {
             Config::set('mail.from.address', $fromAddress);
