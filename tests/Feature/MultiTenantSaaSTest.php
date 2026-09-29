@@ -1351,4 +1351,46 @@ class MultiTenantSaaSTest extends TestCase
             'user_name' => $superAdmin->name,
         ]);
     }
+
+    public function test_send_registration_otp_uses_platform_mail_service(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $response = $this->postJson('/register/send-otp', [
+            'email' => 'newonboarding@gmail.com',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+        $this->assertDatabaseHas('email_otps', [
+            'email' => 'newonboarding@gmail.com',
+        ]);
+    }
+
+    public function test_platform_mail_service_attaches_mandatory_rfc_headers(): void
+    {
+        $capturedMessage = null;
+        \Illuminate\Support\Facades\Mail::shouldReceive('raw')
+            ->once()
+            ->andReturnUsing(function ($body, $callback) use (&$capturedMessage) {
+                $symfonyMessage = new \Symfony\Component\Mime\Email();
+                $symfonyMessage->text($body);
+                $message = new \Illuminate\Mail\Message($symfonyMessage);
+                $callback($message);
+                $capturedMessage = $message;
+            });
+
+        \App\Services\PlatformMailService::sendRawMail(
+            'test@external.com',
+            'Test Subject',
+            'Test Body'
+        );
+
+        $this->assertNotNull($capturedMessage);
+        $headers = $capturedMessage->getSymfonyMessage()->getHeaders();
+        $this->assertTrue($headers->has('Date'));
+        $this->assertTrue($headers->has('Message-ID'));
+        $this->assertTrue($headers->has('X-Mailer'));
+        $this->assertStringContainsString('@', $headers->get('Message-ID')->getBodyAsString());
+    }
 }

@@ -64,11 +64,12 @@ class AuthController extends Controller
             ]);
 
             // Dispatch Email with OTP via Super Admin Platform Mail Server
-            PlatformMailService::configurePlatformMailer();
             try {
-                Mail::raw("Your GST-SaaS 2FA login verification code is: {$otp}\n\nThis 6-digit code expires in 10 minutes.\n\nDo not share this code with anyone.", function ($message) use ($user) {
-                    $message->to($user->email)->subject("Your 6-Digit 2FA Login Code - GST-SaaS");
-                });
+                PlatformMailService::sendRawMail(
+                    $user->email,
+                    "Your 6-Digit 2FA Login Code - GST-SaaS",
+                    "Your GST-SaaS 2FA login verification code is: {$otp}\n\nThis 6-digit code expires in 10 minutes.\n\nDo not share this code with anyone."
+                );
             } catch (\Throwable $e) {
                 Log::warning("Could not send 2FA OTP to {$user->email}: " . $e->getMessage());
             }
@@ -179,11 +180,12 @@ class AuthController extends Controller
 
         session(['2fa:preview' => (app()->isLocal() || app()->environment('testing')) ? $otp : null]);
 
-        PlatformMailService::configurePlatformMailer();
         try {
-            Mail::raw("Your new GST-SaaS 2FA login verification code is: {$otp}\n\nThis 6-digit code expires in 10 minutes.\n\nDo not share this code with anyone.", function ($message) use ($user) {
-                $message->to($user->email)->subject("Your Resent 6-Digit 2FA Login Code - GST-SaaS");
-            });
+            PlatformMailService::sendRawMail(
+                $user->email,
+                "Your Resent 6-Digit 2FA Login Code - GST-SaaS",
+                "Your new GST-SaaS 2FA login verification code is: {$otp}\n\nThis 6-digit code expires in 10 minutes.\n\nDo not share this code with anyone."
+            );
         } catch (\Throwable $e) {
             Log::warning("Could not resend 2FA OTP to {$user->email}: " . $e->getMessage());
         }
@@ -229,9 +231,11 @@ class AuthController extends Controller
         }
 
         try {
-            Mail::raw("Your GST-SaaS business onboarding verification code is: {$otp}\n\nThis 4-digit code expires in 10 minutes. Do not share this OTP with anyone.", function ($message) use ($email) {
-                $message->to($email)->subject("Your 4-Digit Onboarding Code - GST-SaaS");
-            });
+            PlatformMailService::sendRawMail(
+                $email,
+                "Your 4-Digit Onboarding Code - GST-SaaS",
+                "Your GST-SaaS business onboarding verification code is: {$otp}\n\nThis 4-digit code expires in 10 minutes. Do not share this OTP with anyone."
+            );
         } catch (\Throwable $e) {
             Log::error("Could not send onboarding OTP to {$email}: " . $e->getMessage());
             return response()->json([
@@ -359,11 +363,12 @@ class AuthController extends Controller
 
         $resetUrl = route('password.reset', ['token' => $token, 'email' => $user->email]);
 
-        PlatformMailService::configurePlatformMailer();
         try {
-            Mail::raw("Hello {$user->name},\n\nYou requested a password reset for your GST-SaaS account.\n\nClick the link below to reset your password:\n{$resetUrl}\n\nIf you did not request this, please ignore this email.", function ($message) use ($user) {
-                $message->to($user->email)->subject("Reset Your GST-SaaS Account Password");
-            });
+            PlatformMailService::sendRawMail(
+                $user->email,
+                "Reset Your GST-SaaS Account Password",
+                "Hello {$user->name},\n\nYou requested a password reset for your GST-SaaS account.\n\nClick the link below to reset your password:\n{$resetUrl}\n\nIf you did not request this, please ignore this email."
+            );
         } catch (\Throwable $e) {
             Log::warning("Could not send password reset email to {$user->email}: " . $e->getMessage());
         }
