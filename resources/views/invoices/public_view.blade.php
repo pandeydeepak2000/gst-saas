@@ -64,10 +64,10 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors">
+                <a href="{{ route('public.invoice.print', $invoice->public_uuid) }}" target="_blank" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm">
                     <span>🖨️</span>
-                    <span>Print / Save PDF</span>
-                </button>
+                    <span>Download / Print Tax Invoice</span>
+                </a>
             </div>
         </div>
     </div>
@@ -280,9 +280,9 @@
                     @if($company->enable_razorpay && $company->razorpay_key_id)
                     <div class="p-5 rounded-2xl bg-slate-800/80 border border-slate-700 flex flex-col justify-between items-center text-center">
                         <div class="space-y-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-blue-400">💳 Online Payment Gateway</span>
-                            <h4 class="font-bold text-sm text-white">Credit / Debit Card, NetBanking & Wallets</h4>
-                            <p class="text-xs text-slate-400">Instant online receipt and automated invoice reconciliation.</p>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-blue-400">💳 Instant Online Payment</span>
+                            <h4 class="font-bold text-sm text-white">UPI Apps, Cards & NetBanking</h4>
+                            <p class="text-xs text-slate-400">Instant confirmation · Automatically updates invoice to PAID in real time.</p>
                         </div>
 
                         <button id="rzp-button" class="mt-4 w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2">
@@ -318,6 +318,21 @@
                                 pid.value = response.razorpay_payment_id;
                                 form.appendChild(pid);
 
+                                if (response.razorpay_order_id) {
+                                    var oid = document.createElement('input');
+                                    oid.type = 'hidden';
+                                    oid.name = 'razorpay_order_id';
+                                    oid.value = response.razorpay_order_id;
+                                    form.appendChild(oid);
+                                }
+                                if (response.razorpay_signature) {
+                                    var sig = document.createElement('input');
+                                    sig.type = 'hidden';
+                                    sig.name = 'razorpay_signature';
+                                    sig.value = response.razorpay_signature;
+                                    form.appendChild(sig);
+                                }
+
                                 document.body.appendChild(form);
                                 form.submit();
                             },
@@ -343,11 +358,33 @@
         </div>
         @else
         <!-- FULLY PAID BADGE -->
-        <div class="p-6 bg-emerald-950/40 text-emerald-400 border-t border-emerald-900/40 text-center rounded-b-3xl">
-            <span class="text-sm font-bold flex items-center justify-center gap-2">
-                <span>🎉</span>
-                <span>This invoice is fully settled and paid. Thank you for your prompt business!</span>
-            </span>
+        <div class="p-8 bg-gradient-to-br from-emerald-950/80 to-slate-900 text-white border-t border-emerald-800/40 text-center rounded-b-3xl space-y-4">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 text-2xl mb-1">
+                ✓
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-emerald-400">Invoice Fully Paid & Settled!</h3>
+                <p class="text-xs text-slate-300 mt-1">Thank you for your business. Your payment has been received and verified.</p>
+            </div>
+
+            @if($invoice->transactions->count() > 0)
+            <div class="max-w-md mx-auto bg-slate-800/60 rounded-xl p-3 border border-slate-700/50 text-left text-xs font-mono">
+                <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1.5">Payment Details:</div>
+                @foreach($invoice->transactions as $tx)
+                <div class="flex justify-between py-1 border-b border-slate-700/50 last:border-0 text-slate-300">
+                    <span>{{ strtoupper($tx->payment_method ?? 'Payment') }} (Ref: {{ $tx->transaction_id ?: 'Manual' }})</span>
+                    <span class="font-bold text-emerald-400">₹{{ number_format($tx->amount, 2) }}</span>
+                </div>
+                @endforeach
+            </div>
+            @endif
+
+            <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
+                <a href="{{ route('public.invoice.print', $invoice->public_uuid) }}" target="_blank" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg transition-all">
+                    <span>🖨️ Download / Print Official Tax Invoice</span>
+                    <span>→</span>
+                </a>
+            </div>
         </div>
         @endif
 

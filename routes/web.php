@@ -22,6 +22,7 @@ use App\Http\Controllers\StaffController;
 
 // Public Client Invoice Portal (Unauthenticated, UUID-guarded)
 Route::get('/view/{uuid}', [PublicInvoiceController::class, 'show'])->name('public.invoice.show');
+Route::get('/view/{uuid}/print', [PublicInvoiceController::class, 'print'])->name('public.invoice.print');
 Route::post('/view/{uuid}/razorpay-callback', [PublicInvoiceController::class, 'razorpayCallback'])
     ->name('public.invoice.razorpay')
     ->middleware('throttle:10,1');

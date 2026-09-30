@@ -1599,6 +1599,67 @@ class MultiTenantSaaSTest extends TestCase
             'amount'     => 590,
         ]);
     }
+
+    public function test_public_invoice_razorpay_flow_and_unauthenticated_print(): void
+    {
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $company = $admin->company;
+        $company->update([
+            'enable_razorpay'     => true,
+            'razorpay_key_id'     => 'rzp_test_12345678',
+            'razorpay_key_secret' => 'secret_12345678',
+        ]);
+
+        $customer = Customer::first();
+        $invoice = Invoice::create([
+            'company_id'     => $company->id,
+            'customer_id'    => $customer->id,
+            'created_by'     => $admin->id,
+            'invoice_number' => 'RZP-TEST-' . uniqid(),
+            'type'           => 'tax_invoice',
+            'invoice_date'   => '2026-09-20',
+            'tax_mode'       => 'simple',
+            'status'         => 'unpaid',
+            'total_amount'   => 500,
+            'balance_amount' => 500,
+            'paid_amount'    => 0,
+            'public_uuid'    => (string) \Illuminate\Support\Str::uuid(),
+        ]);
+
+        // 1. Guest views public page - see Razorpay option and print link
+        $response = $this->get(route('public.invoice.show', $invoice->public_uuid));
+        $response->assertStatus(200);
+        $response->assertSee('Instant Online Payment');
+        $response->assertSee(route('public.invoice.print', $invoice->public_uuid));
+
+        // 2. Guest accesses public print directly without auth
+        $printResponse = $this->get(route('public.invoice.print', $invoice->public_uuid));
+        $printResponse->assertStatus(200);
+        $printResponse->assertSee($invoice->invoice_number);
+
+        // 3. Guest completes payment via Razorpay callback
+        $callbackResponse = $this->post(route('public.invoice.razorpay', $invoice->public_uuid), [
+            'razorpay_payment_id' => 'pay_test_99887766',
+        ]);
+        $callbackResponse->assertRedirect(route('public.invoice.show', $invoice->public_uuid));
+
+        // 4. Verify invoice is now PAID and balance is 0
+        $freshInvoice = $invoice->fresh();
+        $this->assertEquals('paid', $freshInvoice->status);
+        $this->assertEquals(0, $freshInvoice->balance_amount);
+        $this->assertEquals(500, $freshInvoice->paid_amount);
+
+        // 5. Viewing public page again shows "Invoice Fully Paid & Settled"
+        $afterPayResponse = $this->get(route('public.invoice.show', $invoice->public_uuid));
+        $afterPayResponse->assertStatus(200);
+        $afterPayResponse->assertSee('Invoice Fully Paid');
+        $afterPayResponse->assertSee('pay_test_99887766');
+
+        // 6. Guest is STILL NOT logged in and cannot access /invoices or /dashboard
+        $this->assertGuest();
+        $dashboardResponse = $this->get('/dashboard');
+        $dashboardResponse->assertRedirect(route('login'));
+    }
 }
 
 

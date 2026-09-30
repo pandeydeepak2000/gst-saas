@@ -97,4 +97,30 @@ class PublicInvoiceController extends Controller
 
         return redirect()->route('public.invoice.show', $uuid)->with('success', 'Payment of ₹' . number_format($amountPaid, 2) . ' received successfully via Razorpay! Invoice updated.');
     }
+
+    /**
+     * Public printable tax invoice view for client (unauthenticated)
+     */
+    public function print(string $uuid)
+    {
+        $invoice = Invoice::withoutGlobalScopes()
+            ->with(['company', 'customer', 'items', 'transactions'])
+            ->where('public_uuid', $uuid)
+            ->firstOrFail();
+
+        $company = $invoice->company;
+        $customer = $invoice->customer;
+
+        $upiUrl = null;
+        if ($company->enable_upi_qr && !empty($company->upi_id) && $invoice->balance_amount > 0) {
+            $pa = rawurlencode($company->upi_id);
+            $pn = rawurlencode($company->upi_name ?: $company->name);
+            $am = number_format($invoice->balance_amount, 2, '.', '');
+            $tr = rawurlencode($invoice->invoice_number);
+            $tn = rawurlencode('Invoice ' . $invoice->invoice_number);
+            $upiUrl = "upi://pay?pa={$pa}&pn={$pn}&am={$am}&tr={$tr}&tn={$tn}&cu=INR";
+        }
+
+        return view('invoices.print', compact('invoice', 'company', 'customer', 'upiUrl'));
+    }
 }
