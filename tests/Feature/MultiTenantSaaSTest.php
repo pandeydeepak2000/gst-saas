@@ -125,15 +125,22 @@ class MultiTenantSaaSTest extends TestCase
             'invoice_prefix'              => 'ACME/CUSTOM/',
             'invoice_start_number'        => 2000,
             'allow_manual_invoice_number' => 1,
+            'brand_theme'                 => 'emerald',
+            'invoice_design_template'     => 'minimal',
         ]);
 
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('companies', [
-            'id'             => $company->id,
-            'tax_mode'       => 'simple',
-            'invoice_prefix' => 'ACME/CUSTOM/',
+            'id'                      => $company->id,
+            'tax_mode'                => 'simple',
+            'invoice_prefix'          => 'ACME/CUSTOM/',
+            'brand_theme'             => 'emerald',
+            'invoice_design_template' => 'minimal',
         ]);
+
+        $freshCompany = $company->fresh();
+        $this->assertEquals('#059669', $freshCompany->theme_config['primary']);
     }
     public function test_product_catalog_tenant_isolation_and_creation(): void
     {

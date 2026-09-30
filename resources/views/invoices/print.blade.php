@@ -174,7 +174,10 @@
             📋 Template 2: Classic Corporate
         </button>
         <button type="button" class="btn-tab" :class="template === 'greenstudio' ? 'active' : ''" @click="template = 'greenstudio'">
-            🌿 Template 3: Green Studio (Digital & Hosting)
+            🌿 Template 3: Green Studio
+        </button>
+        <button type="button" class="btn-tab" :class="template === 'minimal' ? 'active' : ''" @click="template = 'minimal'">
+            ⚪ Template 4: Minimal Clean (Logo & Table)
         </button>
     </div>
 
@@ -822,6 +825,233 @@
         <!-- Green Studio Clean Footer -->
         <div style="margin-top: 36px; border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center; font-size: 10.5px; color: #64748b;">
             This is a computer generated invoice no signature required.
+        </div>
+
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- TEMPLATE 4: MINIMAL CLEAN (LOGO & NEAT TABLE LAYOUT)      -->
+    <!-- Simple, universally compliant, crisp print aesthetic       -->
+    <!-- ======================================================== -->
+    <div x-show="template === 'minimal'" class="invoice-sheet" style="font-family: 'Plus Jakarta Sans', sans-serif; position: relative; overflow: hidden; padding: 32px 36px; background: #ffffff;">
+        
+        <!-- Top Clean Header with Logo -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 18px; border-bottom: 2px solid #0f172a;">
+            <div>
+                @if($company->logo_path)
+                    <img src="{{ asset('storage/' . $company->logo_path) }}" alt="{{ $company->name }}" style="max-height: 48px; object-fit: contain; margin-bottom: 6px;">
+                @endif
+                <div style="font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -0.3px;">{{ $company->name }}</div>
+                <div style="font-size: 10.5px; color: #475569; margin-top: 3px; max-width: 380px; line-height: 1.4;">
+                    {{ $company->address }}, {{ $company->city }}, {{ $company->state }} - {{ $company->pincode }}
+                </div>
+                <div style="margin-top: 5px; font-size: 10px; color: #334155; display: flex; gap: 12px;" class="mono">
+                    @if($company->gstin)<div>GSTIN: <strong style="color: #0f172a;">{{ $company->gstin }}</strong></div>@endif
+                    @if($company->pan)<div>PAN: <strong>{{ $company->pan }}</strong></div>@endif
+                    @if($company->phone)<div>Phone: <strong>{{ $company->phone }}</strong></div>@endif
+                </div>
+            </div>
+
+            <div style="text-align: right;">
+                <div style="font-size: 11px; font-weight: 800; letter-spacing: 1.5px; color: #64748b; text-transform: uppercase;">
+                    {{ $invoice->type === 'proforma' ? 'PROFORMA INVOICE' : 'TAX INVOICE' }}
+                </div>
+                <div class="mono" style="font-size: 20px; font-weight: 900; color: #0f172a; margin-top: 2px;">#{{ $invoice->invoice_number }}</div>
+                
+                <div style="margin-top: 6px; font-size: 10.5px; color: #64748b;">
+                    Invoice Date: <strong style="color: #0f172a;" class="mono">{{ $invoice->invoice_date->format('d M, Y') }}</strong>
+                </div>
+                @if($invoice->due_date)
+                <div style="font-size: 10.5px; color: #64748b;">
+                    Due Date: <strong style="color: #0f172a;" class="mono">{{ $invoice->due_date->format('d M, Y') }}</strong>
+                </div>
+                @endif
+
+                <div style="margin-top: 8px;">
+                    <span style="display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; background: {{ $invoice->status === 'paid' ? '#dcfce7; color: #166534; border: 1px solid #bbf7d0;' : ($invoice->status === 'partially_paid' ? '#fef3c7; color: #92400e; border: 1px solid #fde68a;' : '#fee2e2; color: #991b1b; border: 1px solid #fecaca;') }}">
+                        ● {{ strtoupper(str_replace('_', ' ', $invoice->status)) }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Billed To / Details Bar -->
+        <div style="display: flex; justify-content: space-between; gap: 20px; padding: 14px 0; border-bottom: 1px solid #e2e8f0; margin-bottom: 14px;">
+            <div style="flex: 1;">
+                <div style="font-size: 9.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">
+                    BILLED TO
+                </div>
+                <div style="font-size: 14px; font-weight: 800; color: #0f172a;">{{ $customer->name }}</div>
+                @if($customer->company_name)
+                    <div style="font-size: 11px; font-weight: 600; color: #334155;">{{ $customer->company_name }}</div>
+                @endif
+                <div style="font-size: 10.5px; color: #475569; margin-top: 2px; line-height: 1.35;">
+                    {{ $customer->billing_address ?? $customer->address }}<br>
+                    {{ $customer->city ? $customer->city . ', ' : '' }}{{ $customer->state }}
+                </div>
+                @if($customer->gstin)
+                <div style="font-size: 10px; font-weight: 700; color: #0f172a; margin-top: 4px;" class="mono">
+                    GSTIN: <strong>{{ $customer->gstin }}</strong>
+                </div>
+                @endif
+            </div>
+
+            <div style="width: 220px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="color: #64748b;">Place of Supply:</span>
+                    <strong style="color: #0f172a;">{{ $invoice->place_of_supply ?? $company->state }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="color: #64748b;">Tax System:</span>
+                    <strong style="color: #0f172a; text-transform: uppercase;">{{ $invoice->effective_tax_mode ?? 'GST' }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #64748b;">Total Items:</span>
+                    <strong style="color: #0f172a;">{{ $invoice->items->count() }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clean Items Table -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+            <thead>
+                <tr style="border-top: 1.5px solid #0f172a; border-bottom: 1.5px solid #0f172a; background: #f8fafc;">
+                    <th style="padding: 8px 10px; font-size: 10px; font-weight: 800; color: #0f172a; text-align: left; width: 35px;">#</th>
+                    <th style="padding: 8px 10px; font-size: 10px; font-weight: 800; color: #0f172a; text-align: left;">ITEM & DESCRIPTION</th>
+                    <th style="padding: 8px 10px; font-size: 10px; font-weight: 800; color: #0f172a; text-align: center; width: 80px;">HSN/SAC</th>
+                    <th style="padding: 8px 10px; font-size: 10px; font-weight: 800; color: #0f172a; text-align: right; width: 60px;">QTY</th>
+                    <th style="padding: 8px 10px; font-size: 10px; font-weight: 800; color: #0f172a; text-align: right; width: 90px;">RATE</th>
+                    <th style="padding: 8px 10px; font-size: 10px; font-weight: 800; color: #0f172a; text-align: center; width: 65px;">GST</th>
+                    <th style="padding: 8px 10px; font-size: 10px; font-weight: 800; color: #0f172a; text-align: right; width: 100px;">AMOUNT</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($invoice->items as $index => $item)
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 8px 10px; font-size: 10px; color: #64748b;" class="mono">{{ $index + 1 }}</td>
+                    <td style="padding: 8px 10px;">
+                        <div style="font-weight: 700; font-size: 11px; color: #0f172a;">{{ $item->description }}</div>
+                        @if($item->domain_name || !empty($item->service_period_start))
+                        <div style="font-size: 9.5px; color: #0284c7; margin-top: 2px;">
+                            @if($item->domain_name)🌐 {{ $item->domain_name }} @endif
+                            @if(!empty($item->service_period_start))
+                                ({{ \Carbon\Carbon::parse($item->service_period_start)->format('d M Y') }} - {{ \Carbon\Carbon::parse($item->service_period_end)->format('d M Y') }})
+                            @endif
+                        </div>
+                        @endif
+                    </td>
+                    <td style="padding: 8px 10px; text-align: center; font-size: 10px; color: #475569;" class="mono">{{ $item->hsn_code ?? '-' }}</td>
+                    <td style="padding: 8px 10px; text-align: right; font-size: 10px; color: #0f172a; font-weight: 600;" class="mono">{{ $item->quantity }} {{ $item->unit ?? 'Pcs' }}</td>
+                    <td style="padding: 8px 10px; text-align: right; font-size: 10px; color: #0f172a;" class="mono">₹{{ number_format($item->unit_price, 2) }}</td>
+                    <td style="padding: 8px 10px; text-align: center; font-size: 10px; color: #475569;" class="mono">{{ (float)$item->gst_rate }}%</td>
+                    <td style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 800; color: #0f172a;" class="mono">₹{{ number_format($item->total_amount, 2) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <!-- Totals & Banking Grid -->
+        <div style="display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-top: 10px;">
+            
+            <!-- Left Column: Bank / QR & Words -->
+            <div style="flex: 1; max-width: 380px;">
+                <div style="margin-bottom: 12px; font-size: 10px; color: #475569; line-height: 1.4;">
+                    Amount in Words:<br>
+                    <strong style="color: #0f172a; font-size: 10.5px;">{{ $invoice->amount_in_words ?? 'Rupees Only' }}</strong>
+                </div>
+
+                <div x-show="showBank" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: 10px; margin-bottom: 10px;">
+                    <div style="font-weight: 800; color: #0f172a; margin-bottom: 4px; text-transform: uppercase; font-size: 9.5px; letter-spacing: 0.5px;">
+                        Bank Transfer Details
+                    </div>
+                    <div class="mono" style="color: #334155; line-height: 1.5;">
+                        <div>Bank: <strong>{{ $company->bank_name ?? 'HDFC Bank' }}</strong></div>
+                        <div>A/C No: <strong>{{ $company->bank_account_number ?? '50200000000000' }}</strong></div>
+                        <div>IFSC: <strong>{{ $company->bank_ifsc ?? 'HDFC0000000' }}</strong></div>
+                    </div>
+                </div>
+
+                <div x-show="showQr && '{{ $upiUrl }}'" style="display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data={{ urlencode($upiUrl ?? '') }}" 
+                         alt="UPI QR" style="width: 58px; height: 58px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <div style="font-size: 9.5px;">
+                        <strong style="color: #0f172a; display: block;">Instant UPI Payment</strong>
+                        <span class="mono" style="color: #475569;">{{ $company->upi_id }}</span>
+                        <div style="color: #64748b; font-size: 8.5px; margin-top: 2px;">Scan via GPay / PhonePe / Paytm</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Summary Table -->
+            <div style="width: 250px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 10.5px;">
+                    <tr>
+                        <td style="padding: 4px 0; color: #475569;">Taxable Amount:</td>
+                        <td style="padding: 4px 0; text-align: right; font-weight: 700; color: #0f172a;" class="mono">₹{{ number_format($invoice->taxable_amount, 2) }}</td>
+                    </tr>
+                    @if($invoice->effective_tax_mode === 'simple')
+                    <tr>
+                        <td style="padding: 4px 0; color: #475569;">Total GST:</td>
+                        <td style="padding: 4px 0; text-align: right; font-weight: 700; color: #0f172a;" class="mono">₹{{ number_format($invoice->cgst_amount + $invoice->sgst_amount + $invoice->igst_amount, 2) }}</td>
+                    </tr>
+                    @else
+                        @if($invoice->cgst_amount > 0)
+                        <tr>
+                            <td style="padding: 3px 0; color: #64748b; font-size: 10px;">CGST:</td>
+                            <td style="padding: 3px 0; text-align: right; font-weight: 600; color: #0f172a;" class="mono">₹{{ number_format($invoice->cgst_amount, 2) }}</td>
+                        </tr>
+                        @endif
+                        @if($invoice->sgst_amount > 0)
+                        <tr>
+                            <td style="padding: 3px 0; color: #64748b; font-size: 10px;">SGST:</td>
+                            <td style="padding: 3px 0; text-align: right; font-weight: 600; color: #0f172a;" class="mono">₹{{ number_format($invoice->sgst_amount, 2) }}</td>
+                        </tr>
+                        @endif
+                        @if($invoice->igst_amount > 0)
+                        <tr>
+                            <td style="padding: 3px 0; color: #64748b; font-size: 10px;">IGST:</td>
+                            <td style="padding: 3px 0; text-align: right; font-weight: 600; color: #0f172a;" class="mono">₹{{ number_format($invoice->igst_amount, 2) }}</td>
+                        </tr>
+                        @endif
+                    @endif
+                    <tr style="border-top: 1.5px solid #0f172a; border-bottom: 2px solid #0f172a;">
+                        <td style="padding: 6px 0; font-weight: 900; font-size: 12px; color: #0f172a;">GRAND TOTAL:</td>
+                        <td style="padding: 6px 0; text-align: right; font-weight: 900; font-size: 13px; color: #0f172a;" class="mono">₹{{ number_format($invoice->total_amount, 2) }}</td>
+                    </tr>
+                    @if($invoice->paid_amount > 0)
+                    <tr>
+                        <td style="padding: 4px 0; color: #16a34a; font-weight: 700;">Amount Paid:</td>
+                        <td style="padding: 4px 0; text-align: right; font-weight: 700; color: #16a34a;" class="mono">- ₹{{ number_format($invoice->paid_amount, 2) }}</td>
+                    </tr>
+                    <tr style="border-top: 1px solid #cbd5e1;">
+                        <td style="padding: 4px 0; font-weight: 800; color: #d97706;">Balance Due:</td>
+                        <td style="padding: 4px 0; text-align: right; font-weight: 900; color: #d97706;" class="mono">₹{{ number_format($invoice->balance_amount, 2) }}</td>
+                    </tr>
+                    @endif
+                </table>
+
+                <!-- Authorized Signatory -->
+                <div style="margin-top: 24px; text-align: right;">
+                    <div style="font-size: 9.5px; color: #475569; margin-bottom: 24px;">
+                        For <strong>{{ $company->name }}</strong>
+                    </div>
+                    @if($company->signature_path)
+                    <div style="margin-bottom: 4px;">
+                        <img src="{{ asset('storage/' . $company->signature_path) }}" alt="Sign" style="max-height: 36px; display: inline-block;">
+                    </div>
+                    @endif
+                    <div style="font-size: 9.5px; font-weight: 800; color: #0f172a; border-top: 1px solid #0f172a; display: inline-block; padding-top: 2px; min-width: 140px; text-align: center;">
+                        Authorized Signatory
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Clean Minimal Footer -->
+        <div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8;">
+            <div>{{ $company->terms_and_conditions ? Str::limit($company->terms_and_conditions, 90) : 'Terms: Payment due as agreed. Late payment subject to interest.' }}</div>
+            <div>Computer Generated Tax Invoice</div>
         </div>
 
     </div>

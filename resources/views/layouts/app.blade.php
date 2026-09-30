@@ -7,6 +7,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    @php
+        $user = auth()->user();
+        $isSuperAdmin = $user && $user->isSuperAdmin() && !session('impersonator_id');
+        $company = $user?->company;
+        $theme = $company?->theme_config ?? [
+            'primary'        => '#7c3aed',
+            'primary_500'    => '#8b5cf6',
+            'primary_600'    => '#7c3aed',
+            'primary_700'    => '#6d28d9',
+            'primary_light'  => '#f5f3ff',
+            'sidebar_active' => 'bg-violet-600 text-white font-semibold shadow-sm',
+            'sidebar_hover'  => 'hover:bg-violet-500/10 hover:text-violet-300',
+            'button_primary' => 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-600/20',
+            'hero_gradient'  => 'from-slate-950 via-slate-900 to-purple-950',
+            'accent_badge'   => 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
+            'kpi_icon_bg'    => 'bg-purple-50 text-purple-600',
+            'ring_focus'     => 'focus:ring-violet-500',
+        ];
+    @endphp
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -14,16 +33,11 @@
                 extend: {
                     colors: {
                         brand: {
-                            50: '#f5f3ff',
-                            100: '#ede9fe',
-                            200: '#ddd6fe',
-                            300: '#c4b5fd',
-                            400: '#a78bfa',
-                            500: '#8b5cf6',
-                            600: '#7c3aed',
-                            700: '#6d28d9',
-                            800: '#5b21b6',
-                            900: '#4c1d95',
+                            50: '{{ $theme["primary_light"] ?? "#f5f3ff" }}',
+                            100: '{{ $theme["primary_light"] ?? "#ede9fe" }}',
+                            500: '{{ $theme["primary_500"] ?? "#8b5cf6" }}',
+                            600: '{{ $theme["primary_600"] ?? "#7c3aed" }}',
+                            700: '{{ $theme["primary_700"] ?? "#6d28d9" }}',
                         }
                     }
                 }
@@ -36,21 +50,6 @@
     </style>
 </head>
 <body class="h-full font-sans antialiased text-slate-800" x-data="{ mobileSidebarOpen: false, showImpersonateModal: false, showOnboardModal: {{ ($errors->has('company_name') || $errors->has('email') || $errors->has('gstin') || $errors->has('admin_name') || $errors->has('password') || old('company_name')) ? 'true' : 'false' }} }" @open-onboard-modal.window="showOnboardModal = true">
-    @php
-        $user = auth()->user();
-        $isSuperAdmin = $user && $user->isSuperAdmin() && !session('impersonator_id');
-        $company = $user?->company;
-        $theme = $company?->theme_config ?? [
-            'primary'        => '#7c3aed',
-            'sidebar_active' => 'bg-violet-600 text-white font-semibold shadow-sm',
-            'sidebar_hover'  => 'hover:bg-violet-500/10 hover:text-violet-300',
-            'button_primary' => 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-600/20',
-            'hero_gradient'  => 'from-slate-950 via-slate-900 to-purple-950',
-            'accent_badge'   => 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
-            'kpi_icon_bg'    => 'bg-purple-50 text-purple-600',
-            'ring_focus'     => 'focus:ring-violet-500',
-        ];
-    @endphp
 
     <div class="min-h-full flex flex-col lg:flex-row">
         

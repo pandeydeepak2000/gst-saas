@@ -137,7 +137,13 @@
         </div>
 
                 <!-- TAB 2: INVOICE TEMPLATES & DESIGN -->
-        <div x-show="activeTab === 'templates'" class="space-y-5" x-cloak>
+        <div x-show="activeTab === 'templates'" 
+             x-data="{ 
+                 selectedTheme: '{{ old('brand_theme', $company->brand_theme ?? 'violet') }}',
+                 selectedTemplate: '{{ old('invoice_design_template', $company->invoice_design_template ?? 'modern') }}',
+                 previewModal: null
+             }" 
+             class="space-y-5" x-cloak>
             
             <!-- Brand Color Theme (Zero Generic Blue) -->
             <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
@@ -146,81 +152,335 @@
                     <p class="text-xs text-slate-500 mt-0.5">Customize your SaaS portal's primary aesthetic palette across navigation, action buttons, and badges.</p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->brand_theme ?? 'violet') === 'emerald' ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-slate-300' }}">
-                        <input type="radio" name="brand_theme" value="emerald" class="sr-only" {{ ($company->brand_theme ?? 'violet') === 'emerald' ? 'checked' : '' }}>
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="w-4 h-4 rounded-full bg-emerald-600"></span>
-                            <strong class="text-xs text-slate-900 font-bold">Forest Emerald</strong>
+                    
+                    <!-- Forest Emerald -->
+                    <label @click="selectedTheme = 'emerald'"
+                           class="p-3.5 rounded-xl border-2 cursor-pointer transition-all block relative"
+                           :class="selectedTheme === 'emerald' ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-sm' : 'border-slate-200 hover:border-slate-300'">
+                        <input type="radio" name="brand_theme" value="emerald" x-model="selectedTheme" class="sr-only">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-2">
+                                <span class="w-4 h-4 rounded-full bg-emerald-600 shadow-sm"></span>
+                                <strong class="text-xs text-slate-900 font-bold">Forest Emerald</strong>
+                            </div>
+                            <span x-show="selectedTheme === 'emerald'" class="text-[9px] font-extrabold uppercase text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Selected</span>
                         </div>
                         <p class="text-[11px] text-slate-500">Deep emerald & titanium slate. Clean fintech aesthetic.</p>
                     </label>
 
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->brand_theme ?? 'violet') === 'violet' ? 'border-purple-600 bg-purple-50/40 ring-2 ring-purple-500/20' : 'border-slate-200 hover:border-slate-300' }}">
-                        <input type="radio" name="brand_theme" value="violet" class="sr-only" {{ ($company->brand_theme ?? 'violet') === 'violet' ? 'checked' : '' }}>
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="w-4 h-4 rounded-full bg-purple-600"></span>
-                            <strong class="text-xs text-slate-900 font-bold">Electric Amethyst</strong>
+                    <!-- Electric Amethyst -->
+                    <label @click="selectedTheme = 'violet'"
+                           class="p-3.5 rounded-xl border-2 cursor-pointer transition-all block relative"
+                           :class="selectedTheme === 'violet' ? 'border-purple-600 bg-purple-50/50 ring-2 ring-purple-500/20 shadow-sm' : 'border-slate-200 hover:border-slate-300'">
+                        <input type="radio" name="brand_theme" value="violet" x-model="selectedTheme" class="sr-only">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-2">
+                                <span class="w-4 h-4 rounded-full bg-purple-600 shadow-sm"></span>
+                                <strong class="text-xs text-slate-900 font-bold">Electric Amethyst</strong>
+                            </div>
+                            <span x-show="selectedTheme === 'violet'" class="text-[9px] font-extrabold uppercase text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">Selected</span>
                         </div>
                         <p class="text-[11px] text-slate-500">Royal violet & cyber cyan. Next-Gen Cloud ERP look.</p>
                     </label>
 
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->brand_theme ?? 'violet') === 'amber' ? 'border-amber-600 bg-amber-50/40 ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-slate-300' }}">
-                        <input type="radio" name="brand_theme" value="amber" class="sr-only" {{ ($company->brand_theme ?? 'violet') === 'amber' ? 'checked' : '' }}>
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="w-4 h-4 rounded-full bg-amber-600"></span>
-                            <strong class="text-xs text-slate-900 font-bold">Warm Amber</strong>
+                    <!-- Warm Amber -->
+                    <label @click="selectedTheme = 'amber'"
+                           class="p-3.5 rounded-xl border-2 cursor-pointer transition-all block relative"
+                           :class="selectedTheme === 'amber' ? 'border-amber-600 bg-amber-50/50 ring-2 ring-amber-500/20 shadow-sm' : 'border-slate-200 hover:border-slate-300'">
+                        <input type="radio" name="brand_theme" value="amber" x-model="selectedTheme" class="sr-only">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-2">
+                                <span class="w-4 h-4 rounded-full bg-amber-600 shadow-sm"></span>
+                                <strong class="text-xs text-slate-900 font-bold">Warm Amber</strong>
+                            </div>
+                            <span x-show="selectedTheme === 'amber'" class="text-[9px] font-extrabold uppercase text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Selected</span>
                         </div>
                         <p class="text-[11px] text-slate-500">Golden merchant bronze & slate. Premium trading feel.</p>
                     </label>
 
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->brand_theme ?? 'violet') === 'rose' ? 'border-rose-600 bg-rose-50/40 ring-2 ring-rose-500/20' : 'border-slate-200 hover:border-slate-300' }}">
-                        <input type="radio" name="brand_theme" value="rose" class="sr-only" {{ ($company->brand_theme ?? 'violet') === 'rose' ? 'checked' : '' }}>
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="w-4 h-4 rounded-full bg-rose-600"></span>
-                            <strong class="text-xs text-slate-900 font-bold">Titan Crimson</strong>
+                    <!-- Titan Crimson -->
+                    <label @click="selectedTheme = 'rose'"
+                           class="p-3.5 rounded-xl border-2 cursor-pointer transition-all block relative"
+                           :class="selectedTheme === 'rose' ? 'border-rose-600 bg-rose-50/50 ring-2 ring-rose-500/20 shadow-sm' : 'border-slate-200 hover:border-slate-300'">
+                        <input type="radio" name="brand_theme" value="rose" x-model="selectedTheme" class="sr-only">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <div class="flex items-center gap-2">
+                                <span class="w-4 h-4 rounded-full bg-rose-600 shadow-sm"></span>
+                                <strong class="text-xs text-slate-900 font-bold">Titan Crimson</strong>
+                            </div>
+                            <span x-show="selectedTheme === 'rose'" class="text-[9px] font-extrabold uppercase text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">Selected</span>
                         </div>
                         <p class="text-[11px] text-slate-500">Vibrant ruby crimson & obsidian. Bold executive style.</p>
                     </label>
                 </div>
             </div>
 
-            <!-- Invoice Templates (3 Formats) -->
-            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
-                <h3 class="text-sm font-bold text-slate-900">Invoice Visual Templates (3 Formats)</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_design_template ?? 'modern') === 'modern' ? 'border-brand-600 bg-brand-50/30' : 'border-slate-200' }}">
-                        <input type="radio" name="invoice_design_template" value="modern" class="sr-only" {{ ($company->invoice_design_template ?? 'modern') === 'modern' ? 'checked' : '' }}>
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="font-bold text-xs sm:text-sm text-slate-900">✨ Modern Executive</span>
-                            @if(($company->invoice_design_template ?? 'modern') === 'modern')
-                            <span class="text-[10px] font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Active</span>
-                            @endif
-                        </div>
-                        <p class="text-[11px] text-slate-500">Contemporary card structure, balanced compact spacing without empty void.</p>
-                    </label>
-
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_design_template ?? 'modern') === 'classic' ? 'border-brand-600 bg-brand-50/30' : 'border-slate-200' }}">
-                        <input type="radio" name="invoice_design_template" value="classic" class="sr-only" {{ ($company->invoice_design_template ?? 'modern') === 'classic' ? 'checked' : '' }}>
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="font-bold text-xs sm:text-sm text-slate-900">📋 Classic Corporate</span>
-                            @if(($company->invoice_design_template ?? 'modern') === 'classic')
-                            <span class="text-[10px] font-bold text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full">Active</span>
-                            @endif
-                        </div>
-                        <p class="text-[11px] text-slate-500">Crisp monochrome border grid, traditional corporate Tally layout, compact footer.</p>
-                    </label>
-
-                    <label class="p-3.5 rounded-xl border-2 cursor-pointer transition-all {{ ($company->invoice_design_template ?? 'modern') === 'greenstudio' ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/20' : 'border-slate-200' }}">
-                        <input type="radio" name="invoice_design_template" value="greenstudio" class="sr-only" {{ ($company->invoice_design_template ?? 'modern') === 'greenstudio' ? 'checked' : '' }}>
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="font-bold text-xs sm:text-sm text-slate-900">🌿 Green Studio</span>
-                            @if(($company->invoice_design_template ?? 'modern') === 'greenstudio')
-                            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Active</span>
-                            @endif
-                        </div>
-                        <p class="text-[11px] text-slate-500">Hosting & Digital layout with diagonal PAID ribbon, clean meta box, and transaction history.</p>
-                    </label>
+            <!-- Invoice Visual Templates (4 Formats) with Live Selection & Visual Preview -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">Invoice Visual Templates (4 Formats)</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Select a layout format for your printed invoices and PDFs. Click preview to inspect each format.</p>
+                    </div>
                 </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    
+                    <!-- 1. Modern Executive -->
+                    <div @click="selectedTemplate = 'modern'"
+                         class="p-3.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between"
+                         :class="selectedTemplate === 'modern' ? 'border-brand-600 bg-brand-50/40 ring-2 ring-brand-500/20 shadow-sm' : 'border-slate-200 hover:border-slate-300'">
+                        <input type="radio" name="invoice_design_template" value="modern" x-model="selectedTemplate" class="sr-only">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-xs text-slate-900">✨ Modern Executive</span>
+                                <span x-show="selectedTemplate === 'modern'" class="text-[9px] font-extrabold uppercase text-brand-700 bg-brand-100 px-2 py-0.5 rounded-full">Active</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500">Contemporary card structure, balanced compact spacing without empty void.</p>
+                        </div>
+                        <button type="button" @click.stop="previewModal = 'modern'" class="mt-3 text-[11px] font-bold text-brand-600 hover:text-brand-800 text-left flex items-center gap-1">
+                            <span>👁️ Live Preview</span>
+                        </button>
+                    </div>
+
+                    <!-- 2. Classic Corporate -->
+                    <div @click="selectedTemplate = 'classic'"
+                         class="p-3.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between"
+                         :class="selectedTemplate === 'classic' ? 'border-brand-600 bg-brand-50/40 ring-2 ring-brand-500/20 shadow-sm' : 'border-slate-200 hover:border-slate-300'">
+                        <input type="radio" name="invoice_design_template" value="classic" x-model="selectedTemplate" class="sr-only">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-xs text-slate-900">📋 Classic Corporate</span>
+                                <span x-show="selectedTemplate === 'classic'" class="text-[9px] font-extrabold uppercase text-brand-700 bg-brand-100 px-2 py-0.5 rounded-full">Active</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500">Crisp monochrome border grid, traditional corporate Tally layout, compact footer.</p>
+                        </div>
+                        <button type="button" @click.stop="previewModal = 'classic'" class="mt-3 text-[11px] font-bold text-brand-600 hover:text-brand-800 text-left flex items-center gap-1">
+                            <span>👁️ Live Preview</span>
+                        </button>
+                    </div>
+
+                    <!-- 3. Green Studio -->
+                    <div @click="selectedTemplate = 'greenstudio'"
+                         class="p-3.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between"
+                         :class="selectedTemplate === 'greenstudio' ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/20 shadow-sm' : 'border-slate-200 hover:border-slate-300'">
+                        <input type="radio" name="invoice_design_template" value="greenstudio" x-model="selectedTemplate" class="sr-only">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-xs text-slate-900">🌿 Green Studio</span>
+                                <span x-show="selectedTemplate === 'greenstudio'" class="text-[9px] font-extrabold uppercase text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Active</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500">Hosting & Digital layout with diagonal PAID ribbon, clean meta box, and transaction history.</p>
+                        </div>
+                        <button type="button" @click.stop="previewModal = 'greenstudio'" class="mt-3 text-[11px] font-bold text-emerald-600 hover:text-emerald-800 text-left flex items-center gap-1">
+                            <span>👁️ Live Preview</span>
+                        </button>
+                    </div>
+
+                    <!-- 4. Minimal Clean (Normal Layout with Logo) -->
+                    <div @click="selectedTemplate = 'minimal'"
+                         class="p-3.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between"
+                         :class="selectedTemplate === 'minimal' ? 'border-slate-800 bg-slate-100/70 ring-2 ring-slate-400/20 shadow-sm' : 'border-slate-200 hover:border-slate-300'">
+                        <input type="radio" name="invoice_design_template" value="minimal" x-model="selectedTemplate" class="sr-only">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-xs text-slate-900">⚪ Minimal Clean (Normal)</span>
+                                <span x-show="selectedTemplate === 'minimal'" class="text-[9px] font-extrabold uppercase text-slate-800 bg-slate-200 px-2 py-0.5 rounded-full">Active</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500">Clean company logo on top, simple classic table, no heavy blocks. Universally accepted.</p>
+                        </div>
+                        <button type="button" @click.stop="previewModal = 'minimal'" class="mt-3 text-[11px] font-bold text-slate-700 hover:text-slate-900 text-left flex items-center gap-1">
+                            <span>👁️ Live Preview</span>
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- LIVE PREVIEW MODAL -->
+                <div x-show="previewModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm" @click.self="previewModal = null">
+                    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl space-y-4">
+                        <div class="flex items-center justify-between border-b pb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Template Preview:</span>
+                                <strong class="text-sm font-black text-slate-900" x-text="previewModal === 'modern' ? '✨ Modern Executive' : (previewModal === 'classic' ? '📋 Classic Corporate' : (previewModal === 'greenstudio' ? '🌿 Green Studio' : '⚪ Minimal Clean (Normal)'))"></strong>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="button" @click="selectedTemplate = previewModal; previewModal = null" class="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition-all">
+                                    ✓ Select this Template
+                                </button>
+                                <button type="button" @click="previewModal = null" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- PREVIEW 1: MODERN EXECUTIVE -->
+                        <div x-show="previewModal === 'modern'" class="border border-slate-200 rounded-xl p-6 bg-slate-50 space-y-4 text-xs font-sans">
+                            <div class="flex justify-between items-start border-b-2 border-slate-900 pb-3">
+                                <div>
+                                    @if($company->logo_path)
+                                    <img src="{{ asset('storage/' . $company->logo_path) }}" alt="Logo" class="h-8 object-contain mb-1">
+                                    @endif
+                                    <div class="font-extrabold text-base text-slate-900">{{ $company->name }}</div>
+                                    <div class="text-[10px] text-slate-500">Corporate Office · GSTIN: {{ $company->gstin ?? '10DYFPA2189J1ZO' }}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-[10px] font-bold text-slate-500 uppercase">TAX INVOICE</div>
+                                    <div class="font-mono font-bold text-slate-900">#INV-2026-0001</div>
+                                    <div class="text-[10px] text-slate-500">Date: {{ now()->format('d M, Y') }}</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 bg-white p-3 rounded-lg border border-slate-200">
+                                <div>
+                                    <div class="text-[10px] font-bold text-slate-400">BILLED TO:</div>
+                                    <div class="font-bold text-slate-800">Acme Technologies Pvt Ltd</div>
+                                    <div class="text-[10px] text-slate-500">GSTIN: 27AABCU9603R1ZM · Mumbai, Maharashtra</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-[10px] font-bold text-slate-400">TOTAL DUE:</div>
+                                    <div class="text-base font-black text-brand-600 font-mono">₹1,180.00</div>
+                                </div>
+                            </div>
+                            <table class="w-full text-left border-collapse bg-white rounded-lg overflow-hidden border border-slate-200">
+                                <thead class="bg-slate-900 text-white text-[10px] uppercase">
+                                    <tr>
+                                        <th class="p-2">Item Description</th>
+                                        <th class="p-2 text-center">Qty</th>
+                                        <th class="p-2 text-right">Rate</th>
+                                        <th class="p-2 text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-[11px]">
+                                    <tr>
+                                        <td class="p-2">Web Hosting & Cloud Maintenance</td>
+                                        <td class="p-2 text-center">1</td>
+                                        <td class="p-2 text-right font-mono">₹1,000.00</td>
+                                        <td class="p-2 text-right font-mono font-bold">₹1,180.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- PREVIEW 2: CLASSIC CORPORATE -->
+                        <div x-show="previewModal === 'classic'" class="border-2 border-slate-900 p-6 bg-white space-y-4 text-xs font-serif">
+                            <div class="text-center border-b-2 border-slate-900 pb-2">
+                                <div class="font-black text-base uppercase text-slate-900 tracking-wider">{{ $company->name }}</div>
+                                <div class="text-[10px] text-slate-600">GSTIN: {{ $company->gstin ?? '10DYFPA2189J1ZO' }} · {{ $company->city ?? 'Patna' }}, {{ $company->state ?? 'Bihar' }}</div>
+                                <div class="font-bold text-[11px] underline mt-1">TAX INVOICE (Tally Style)</div>
+                            </div>
+                            <div class="border border-slate-900 grid grid-cols-2 divide-x divide-slate-900 text-[10px]">
+                                <div class="p-2">
+                                    <strong>Buyer:</strong> Acme Technologies Pvt Ltd<br>
+                                    GSTIN: 27AABCU9603R1ZM
+                                </div>
+                                <div class="p-2">
+                                    <strong>Invoice No:</strong> #INV-2026-0001<br>
+                                    <strong>Dated:</strong> {{ now()->format('d-m-Y') }}
+                                </div>
+                            </div>
+                            <table class="w-full border border-slate-900 text-[10px] text-left">
+                                <thead class="border-b border-slate-900 bg-slate-100">
+                                    <tr>
+                                        <th class="p-1.5 border-r border-slate-900">Particulars</th>
+                                        <th class="p-1.5 text-center border-r border-slate-900">Qty</th>
+                                        <th class="p-1.5 text-right border-r border-slate-900">Rate</th>
+                                        <th class="p-1.5 text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="p-1.5 border-r border-slate-900">Business ERP Subscription</td>
+                                        <td class="p-1.5 text-center border-r border-slate-900">1 Nos</td>
+                                        <td class="p-1.5 text-right border-r border-slate-900">₹1,000.00</td>
+                                        <td class="p-1.5 text-right font-bold">₹1,180.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- PREVIEW 3: GREEN STUDIO -->
+                        <div x-show="previewModal === 'greenstudio'" class="border border-slate-200 rounded-xl p-6 bg-white space-y-4 text-xs font-sans relative overflow-hidden">
+                            <div class="absolute top-0 right-0 bg-emerald-600 text-white font-black text-[9px] uppercase tracking-widest px-8 py-1 rotate-45 translate-x-6 translate-y-3 shadow-md">
+                                PAID
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg">🌿</div>
+                                <div>
+                                    <div class="font-extrabold text-base text-slate-900 uppercase">{{ $company->name }}</div>
+                                    <div class="text-[10px] text-slate-500">GSTIN: {{ $company->gstin ?? '10DYFPA2189J1ZO' }}</div>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-between text-[11px]">
+                                <div><strong>Invoice:</strong> #INV-2026-0001</div>
+                                <div><strong>Date:</strong> {{ now()->format('d-m-Y') }}</div>
+                                <div class="text-emerald-600 font-extrabold">PAID</div>
+                            </div>
+                            <div class="border border-slate-200 rounded-xl overflow-hidden">
+                                <div class="bg-slate-100 p-2 font-bold text-[10px] text-slate-700 flex justify-between">
+                                    <span>DESCRIPTION</span>
+                                    <span>TOTAL</span>
+                                </div>
+                                <div class="p-2.5 flex justify-between text-[11px] border-t border-slate-200">
+                                    <span>Domain & Cloud Hosting Renewal</span>
+                                    <span class="font-bold text-slate-900">₹1,180.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PREVIEW 4: MINIMAL CLEAN -->
+                        <div x-show="previewModal === 'minimal'" class="border border-slate-200 rounded-xl p-6 bg-white space-y-4 text-xs font-sans">
+                            <div class="flex justify-between items-start border-b-2 border-slate-900 pb-3">
+                                <div>
+                                    @if($company->logo_path)
+                                    <img src="{{ asset('storage/' . $company->logo_path) }}" alt="Logo" class="h-8 object-contain mb-1">
+                                    @endif
+                                    <div class="font-black text-base text-slate-900">{{ $company->name }}</div>
+                                    <div class="text-[10px] text-slate-500">GSTIN: {{ $company->gstin ?? '10DYFPA2189J1ZO' }} · Phone: {{ $company->phone }}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TAX INVOICE</div>
+                                    <div class="font-mono font-black text-base text-slate-900">#INV-2026-0001</div>
+                                    <div class="text-[10px] text-slate-500">{{ now()->format('d M, Y') }}</div>
+                                </div>
+                            </div>
+                            <div class="py-2 border-b border-slate-200 flex justify-between">
+                                <div>
+                                    <div class="text-[9px] font-bold text-slate-400 uppercase">BILLED TO:</div>
+                                    <div class="font-bold text-slate-900">Acme Technologies Pvt Ltd</div>
+                                    <div class="text-[10px] text-slate-500">Mumbai, Maharashtra</div>
+                                </div>
+                                <div class="text-right text-[10px]">
+                                    <div class="text-slate-500">Place of Supply: {{ $company->state ?? 'State' }}</div>
+                                    <div class="text-slate-500">Tax System: GST</div>
+                                </div>
+                            </div>
+                            <table class="w-full text-left text-[11px]">
+                                <thead class="border-y border-slate-900 text-[10px] uppercase font-bold text-slate-800">
+                                    <tr>
+                                        <th class="py-1.5">Description</th>
+                                        <th class="py-1.5 text-center">Qty</th>
+                                        <th class="py-1.5 text-right">Rate</th>
+                                        <th class="py-1.5 text-right">Amount</th>
+                                    </tr>
+                                </div>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr>
+                                        <td class="py-2 font-medium">Software Development Consulting</td>
+                                        <td class="py-2 text-center font-mono">1</td>
+                                        <td class="py-2 text-right font-mono">₹1,000.00</td>
+                                        <td class="py-2 text-right font-mono font-bold">₹1,180.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="border-t border-slate-900 pt-2 flex justify-between items-center font-bold">
+                                <span>Grand Total:</span>
+                                <span class="font-mono text-base font-black">₹1,180.00</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
 
             <!-- Print Visibility Toggles -->
