@@ -1667,6 +1667,33 @@ class MultiTenantSaaSTest extends TestCase
         $dashboardResponse = $this->get('/dashboard');
         $dashboardResponse->assertRedirect(route('login'));
     }
+
+    public function test_company_logo_upload_and_removal_from_profile(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($admin);
+
+        // 1. Upload valid logo from profile
+        $file = \Illuminate\Http\UploadedFile::fake()->image('company_logo.png', 300, 100);
+        $response = $this->post(route('profile.logo'), [
+            'logo_file' => $file,
+        ]);
+        $response->assertSessionHas('success');
+
+        $company = $admin->company->fresh();
+        $this->assertNotNull($company->logo_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($company->logo_path);
+
+        // 2. Remove logo from profile
+        $removeResponse = $this->post(route('profile.logo'), [
+            'remove_logo' => '1',
+        ]);
+        $removeResponse->assertSessionHas('success');
+
+        $company = $admin->company->fresh();
+        $this->assertNull($company->logo_path);
+    }
 }
 
 

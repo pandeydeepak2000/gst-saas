@@ -130,6 +130,7 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/request-email-change', [ProfileController::class, 'requestEmailChange'])->name('profile.request_email_change');
     Route::post('/profile/signature', [ProfileController::class, 'updateSignature'])->name('profile.signature');
+    Route::post('/profile/logo', [ProfileController::class, 'updateLogo'])->name('profile.logo');
     Route::post('/profile/2fa/toggle', [ProfileController::class, 'toggle2fa'])->name('profile.2fa.toggle');
 
     // Tenant Team & Staff Access Control (RBAC: team / company admin)

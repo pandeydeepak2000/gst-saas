@@ -466,6 +466,9 @@
             <!-- Supplier -->
             <div style="border-right: 1px solid #0f172a; padding: 8px 12px; line-height: 1.45;">
                 <div style="font-size: 8px; font-weight: 800; color: #64748b; text-transform: uppercase;">Details of Supplier / Consignor:</div>
+                @if($company->logo_path)
+                    <img src="{{ asset('storage/' . $company->logo_path) }}" alt="{{ $company->name }}" style="max-height: 38px; object-fit: contain; margin: 4px 0 2px 0; display: block;">
+                @endif
                 <div style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 2px 0;">{{ $company->name }}</div>
                 <div style="color: #334155;">{{ $company->address }}, {{ $company->city }}, {{ $company->state }} - {{ $company->pincode }}</div>
                 <div style="margin-top: 4px; font-weight: 700; color: #0f172a;">

@@ -210,4 +210,41 @@ class ProfileController extends Controller
         ActivityLog::log('update', 'signature', "Updated company invoice signature details.");
         return back()->with('success', 'Invoice signature and digital sign-off updated successfully!');
     }
+
+    /**
+     * Upload or remove company official logo from profile
+     */
+    public function updateLogo(Request $request)
+    {
+        $user = auth()->user();
+        $company = $user->company;
+
+        if (!$company) {
+            return back()->with('warning', 'Company profile not found.');
+        }
+
+        if ($request->boolean('remove_logo')) {
+            if ($company->logo_path) {
+                Storage::disk('public')->delete($company->logo_path);
+            }
+            $company->update(['logo_path' => null]);
+            ActivityLog::log('update', 'logo', "Removed company official logo.");
+            return back()->with('success', 'Logo removed! Invoices and portal will now cleanly display your company name as text.');
+        }
+
+        $request->validate([
+            'logo_file' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+        ]);
+
+        if ($request->hasFile('logo_file')) {
+            if ($company->logo_path) {
+                Storage::disk('public')->delete($company->logo_path);
+            }
+            $path = $request->file('logo_file')->store('logos', 'public');
+            $company->update(['logo_path' => $path]);
+        }
+
+        ActivityLog::log('update', 'logo', "Updated company official logo.");
+        return back()->with('success', 'Company logo uploaded successfully! It will now appear on all your invoices, PDFs, and portal.');
+    }
 }

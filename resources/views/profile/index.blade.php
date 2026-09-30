@@ -1,4 +1,4 @@
-﻿<x-app-layout header="My Profile & Security Settings">
+<x-app-layout header="My Profile & Security Settings">
     <div class="max-w-4xl mx-auto space-y-6" x-data="{ showEmailModal: false }">
         
         <div>
@@ -180,8 +180,80 @@
             </div>
         </div>
 
-        <!-- 3. INVOICE SIGNATURE & DIGITAL SIGN-OFF (FOR TENANT COMPANIES) -->
+        <!-- 3. OFFICIAL COMPANY LOGO (FOR TENANT COMPANIES) -->
         @if($company)
+        <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-5">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                    <h3 class="font-bold text-slate-900">Official Company Brand Logo</h3>
+                    <p class="text-xs text-slate-500">Upload your company logo for invoice prints, PDFs, and client payment views. If no logo is uploaded, your company name is cleanly displayed as bold text.</p>
+                </div>
+                <div>
+                    @if($company->logo_path)
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            ✓ Logo Uploaded & Active
+                        </span>
+                    @else
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                            Default (Text Name Mode)
+                        </span>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Current Logo Preview Card -->
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    @if($company->logo_path)
+                        <div class="p-2.5 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center min-w-[70px]">
+                            <img src="{{ asset('storage/' . $company->logo_path) }}" alt="{{ $company->name }}" class="h-12 max-w-[160px] object-contain">
+                        </div>
+                        <div>
+                            <strong class="text-xs text-slate-900 block font-bold">Active Brand Logo:</strong>
+                            <p class="text-[11px] text-slate-500 mt-0.5">This logo is currently printed on all your invoices, estimates, and client payment portals.</p>
+                        </div>
+                    @else
+                        <div class="w-12 h-12 rounded-xl bg-slate-900 text-white font-black text-lg flex items-center justify-center shadow-sm">
+                            {{ strtoupper(substr($company->name, 0, 2)) }}
+                        </div>
+                        <div>
+                            <strong class="text-xs text-slate-900 block font-bold">{{ $company->name }}</strong>
+                            <p class="text-[11px] text-slate-500 mt-0.5">No logo uploaded yet. Invoices display your company name as bold text header.</p>
+                        </div>
+                    @endif
+                </div>
+
+                @if($company->logo_path)
+                <form action="{{ route('profile.logo') }}" method="POST" onsubmit="return confirm('Remove company logo? Invoices will revert to displaying company name text.');">
+                    @csrf
+                    <input type="hidden" name="remove_logo" value="1">
+                    <button type="submit" class="px-3.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition-all">
+                        🗑️ Remove Logo
+                    </button>
+                </form>
+                @endif
+            </div>
+
+            <!-- Upload Logo Form -->
+            <form action="{{ route('profile.logo') }}" method="POST" enctype="multipart/form-data" class="space-y-3 pt-1">
+                @csrf
+                <div class="p-4 rounded-xl border border-slate-200 bg-white">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        {{ $company->logo_path ? 'Change Company Logo' : 'Upload Company Logo' }}
+                    </label>
+                    <p class="text-[11px] text-slate-500 mb-3">Accepted formats: PNG, JPG, JPEG, WEBP (transparent PNG recommended, max 2MB).</p>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input type="file" name="logo_file" accept="image/png,image/jpeg,image/jpg,image/webp" required
+                               class="flex-1 text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer">
+                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-md transition-all">
+                            ⬆️ Upload Logo
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- 4. INVOICE SIGNATURE & DIGITAL SIGN-OFF (FOR TENANT COMPANIES) -->
         <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-5">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
