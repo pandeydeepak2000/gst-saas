@@ -1463,5 +1463,61 @@ class MultiTenantSaaSTest extends TestCase
             'items.0.rate'        => 'Rate cannot be negative.',
         ]);
     }
+
+    public function test_invoice_show_and_print_with_service_period_and_null_due_date(): void
+    {
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($admin);
+
+        $customer = Customer::where('company_id', $admin->company_id)->first();
+
+        // Create invoice without due_date and with service period
+        $payload = [
+            'customer_id'    => $customer->id,
+            'invoice_number' => 'INV-PERIOD-TEST-' . uniqid(),
+            'invoice_date'   => '2026-09-30',
+            'due_date'       => null,
+            'sale_type'      => 'LOCAL',
+            'tax_mode'       => 'simple',
+            'status'         => 'unpaid',
+            'items'          => [
+                [
+                    'description'          => 'Cloud Hosting Plan',
+                    'domain_name'          => 'testclient.com',
+                    'service_period_start' => '2026-10-01',
+                    'service_period_end'   => '2027-09-30',
+                    'billing_cycle'        => '1 Year',
+                    'hsn_sac'              => '998313',
+                    'quantity'             => 1,
+                    'unit'                 => 'Year',
+                    'rate'                 => 2500,
+                    'gst_percent'          => 18,
+                ]
+            ],
+        ];
+
+        $createResponse = $this->post(route('invoices.store'), $payload);
+        $createResponse->assertSessionHasNoErrors();
+
+        $invoice = Invoice::where('invoice_number', $payload['invoice_number'])->firstOrFail();
+
+        // Test show view loads cleanly without 500 error
+        $showResponse = $this->get(route('invoices.show', $invoice->id));
+        $showResponse->assertStatus(200);
+        $showResponse->assertSee('Cloud Hosting Plan');
+        $showResponse->assertSee('testclient.com');
+        $showResponse->assertSee('Due on receipt');
+
+        // Test print view loads cleanly without 500 error
+        $printResponse = $this->get(route('invoices.print', $invoice->id));
+        $printResponse->assertStatus(200);
+        $printResponse->assertSee('Cloud Hosting Plan');
+
+        // Test public view loads cleanly without 500 error
+        $publicResponse = $this->get(route('public.invoice.show', $invoice->public_uuid));
+        $publicResponse->assertStatus(200);
+        $publicResponse->assertSee('Cloud Hosting Plan');
+    }
 }
+
 

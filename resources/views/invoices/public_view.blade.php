@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
@@ -157,13 +157,13 @@
                         <tr>
                             <td class="py-3 px-2">
                                 <div class="font-semibold text-slate-900">{{ $item->description }}</div>
-                                @if($item->domain_name || $item->service_period_start)
+                                @if($item->domain_name || !empty($item->service_period_start))
                                 <div class="inline-flex items-center gap-1.5 px-2 py-0.5 mt-1 rounded bg-indigo-50 text-indigo-700 text-[11px] font-mono border border-indigo-100">
                                     @if($item->domain_name)
                                     <span>🌐 {{ $item->domain_name }}</span>
                                     @endif
-                                    @if($item->service_period_start)
-                                    <span>· Period: {{ $item->service_period_start->format('d M Y') }} to {{ $item->service_period_end ? $item->service_period_end->format('d M Y') : 'Ongoing' }}</span>
+                                    @if(!empty($item->service_period_start))
+                                    <span>· Period: {{ \Carbon\Carbon::parse($item->service_period_start)->format('d M Y') }} to {{ !empty($item->service_period_end) ? \Carbon\Carbon::parse($item->service_period_end)->format('d M Y') : 'Ongoing' }}</span>
                                     @endif
                                     @if($item->billing_cycle)
                                     <span>({{ $item->billing_cycle }})</span>

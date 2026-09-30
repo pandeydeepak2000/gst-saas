@@ -532,10 +532,10 @@
                     <td style="padding: 5px 6px; text-align: center; border-right: 1px solid #e2e8f0;" class="mono">{{ $idx + 1 }}</td>
                     <td style="padding: 5px 8px; border-right: 1px solid #e2e8f0;">
                         <strong style="color: #0f172a;">{{ $item->description }}</strong>
-                        @if($item->domain_name || $item->service_period_start)
+                        @if($item->domain_name || !empty($item->service_period_start))
                         <div style="font-size: 8px; color: #0284c7; margin-top: 1px;">
                             @if($item->domain_name) Domain: {{ $item->domain_name }} @endif
-                            @if($item->service_period_start) | Period: {{ $item->service_period_start->format('d/m/Y') }} to {{ $item->service_period_end ? $item->service_period_end->format('d/m/Y') : '' }} @endif
+                            @if(!empty($item->service_period_start)) | Period: {{ \Carbon\Carbon::parse($item->service_period_start)->format('d/m/Y') }} to {{ !empty($item->service_period_end) ? \Carbon\Carbon::parse($item->service_period_end)->format('d/m/Y') : '' }} @endif
                         </div>
                         @endif
                     </td>
@@ -730,10 +730,10 @@
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 12px; font-size: 11.5px; color: #0f172a; font-weight: 600;">
                         {{ $item->description }}
-                        @if($item->domain_name || $item->service_period_start)
+                        @if($item->domain_name || !empty($item->service_period_start))
                         <div style="font-size: 9.5px; color: #16a34a; font-weight: 500; margin-top: 2px;">
                             @if($item->domain_name) Domain: {{ $item->domain_name }} @endif
-                            @if($item->service_period_start) | Period: {{ $item->service_period_start->format('d/m/Y') }} - {{ $item->service_period_end ? $item->service_period_end->format('d/m/Y') : '' }} @endif
+                            @if(!empty($item->service_period_start)) | Period: {{ \Carbon\Carbon::parse($item->service_period_start)->format('d/m/Y') }} - {{ !empty($item->service_period_end) ? \Carbon\Carbon::parse($item->service_period_end)->format('d/m/Y') : '' }} @endif
                         </div>
                         @endif
                     </td>

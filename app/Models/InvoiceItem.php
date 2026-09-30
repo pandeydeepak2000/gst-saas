@@ -30,14 +30,16 @@ class InvoiceItem extends Model
     ];
 
     protected $casts = [
-        'quantity' => 'float',
-        'rate' => 'float',
-        'gst_percent' => 'float',
-        'taxable_amount' => 'float',
-        'cgst_amount' => 'float',
-        'sgst_amount' => 'float',
-        'igst_amount' => 'float',
-        'line_total' => 'float',
+        'service_period_start' => 'date',
+        'service_period_end'   => 'date',
+        'quantity'             => 'float',
+        'rate'                 => 'float',
+        'gst_percent'          => 'float',
+        'taxable_amount'       => 'float',
+        'cgst_amount'          => 'float',
+        'sgst_amount'          => 'float',
+        'igst_amount'          => 'float',
+        'line_total'           => 'float',
     ];
 
     public function invoice(): BelongsTo

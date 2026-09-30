@@ -11,6 +11,7 @@
             'unit'                 => 'Pcs',
             'rate'                 => 0,
             'gst_percent'          => 18,
+            'showPeriod'           => false,
         ]
     ];
     $rawItems = old('items');
@@ -27,6 +28,7 @@
                 'unit'                 => (string)($i['unit'] ?? 'Pcs'),
                 'rate'                 => isset($i['rate']) && is_numeric($i['rate']) ? (float)$i['rate'] : 0,
                 'gst_percent'          => isset($i['gst_percent']) && is_numeric($i['gst_percent']) ? (float)$i['gst_percent'] : 18,
+                'showPeriod'           => !empty($i['domain_name']) || !empty($i['service_period_start']),
             ];
         })->values()->all();
     } else {
@@ -43,13 +45,13 @@
 <x-app-layout header="Create GST Tax Invoice">
     <div class="max-w-6xl mx-auto space-y-6" x-data="invoiceBuilder()">
         
-        <!-- Instant Real-Time Error Alert Banner (Client or Server) -->
+        <!-- Instant Real-Time Error Alert Banner -->
         <div x-show="formErrorMessage" x-cloak class="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-900 shadow-sm flex items-start justify-between gap-3 transition-all">
             <div class="flex items-start gap-2.5">
                 <span class="text-xl leading-none">⚠️</span>
                 <div>
                     <h4 class="font-bold text-sm" x-text="formErrorMessage"></h4>
-                    <p class="text-xs text-rose-700 mt-0.5">Niche red border wale fields ko check karein aur sahi karein. Aapka koi data reset nahi hua hai.</p>
+                    <p class="text-xs text-rose-700 mt-0.5">Niche lal (red) highlight kiye gaye fields ko check karein. Aapka koi data reset nahi hoga.</p>
                 </div>
             </div>
             <button type="button" @click="formErrorMessage = ''" class="text-rose-400 hover:text-rose-700 font-bold text-xl leading-none">&times;</button>
@@ -135,11 +137,15 @@
                         <p x-show="fieldErrors['invoice_date']" x-text="fieldErrors['invoice_date']" class="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1"></p>
                     </div>
 
-                    <!-- 4. DUE DATE -->
+                    <!-- 4. DUE DATE (OPTIONAL) -->
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Due Date</label>
-                        <input type="date" name="due_date" value="{{ old('due_date', date('Y-m-d', strtotime('+15 days'))) }}"
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">Due Date</label>
+                            <span class="text-[10px] text-slate-400 font-semibold">(Optional)</span>
+                        </div>
+                        <input type="date" name="due_date" value="{{ old('due_date') }}"
                                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                        <p class="text-[11px] text-slate-400 mt-1">Khali chhod sakte hain (Due on Receipt)</p>
                     </div>
                 </div>
 
@@ -172,13 +178,13 @@
 
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Payment Method / Note</label>
-                        <input type="text" name="payment_method" value="{{ old('payment_method') }}" placeholder="e.g. UPI, NetBanking, Cash"
+                        <input type="text" name="payment_method" value="{{ old('payment_method') }}" placeholder="e.g. UPI, Cash, Bank Transfer"
                                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
                     </div>
                 </div>
             </div>
 
-            <!-- Line Items Table -->
+            <!-- Line Items Table (Clean, Streamlined & Friendly) -->
             <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
                 <div class="flex items-center justify-between">
                     <div>
@@ -197,7 +203,7 @@
                         <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200">
                             <tr>
                                 <th class="py-2.5 px-3 w-10 text-center">#</th>
-                                <th class="py-2.5 px-3 min-w-[280px]">Item Description & Details *</th>
+                                <th class="py-2.5 px-3 min-w-[280px]">Item Description & Name *</th>
                                 <th class="py-2.5 px-3 w-28">HSN/SAC</th>
                                 <th class="py-2.5 px-3 w-24 text-center">Qty *</th>
                                 <th class="py-2.5 px-3 w-24">Unit</th>
@@ -212,11 +218,11 @@
                             <template x-for="(item, index) in items" :key="index">
                                 <tr class="hover:bg-slate-50/50 transition-colors">
                                     <!-- Index -->
-                                    <td class="py-2 px-3 text-center text-xs font-mono text-slate-400 font-bold align-top pt-3" x-text="index + 1"></td>
+                                    <td class="py-2.5 px-3 text-center text-xs font-mono text-slate-400 font-bold align-top pt-3" x-text="index + 1"></td>
 
                                     <!-- Description & Domain/Hosting Options -->
                                     <td class="py-2 px-3 align-top">
-                                        <div class="space-y-1.5">
+                                        <div class="space-y-1">
                                             <input type="text"
                                                    :name="`items[${index}][description]`"
                                                    :id="`field_item_${index}_description`"
@@ -230,29 +236,46 @@
                                             
                                             <p x-show="fieldErrors['item_' + index + '_description']" x-text="fieldErrors['item_' + index + '_description']" class="text-[11px] text-rose-600 font-bold flex items-center gap-1"></p>
 
-                                            <!-- Optional Hosting/Domain expansion row -->
-                                            <div class="flex items-center gap-2 pt-0.5">
-                                                <input type="text"
-                                                       :name="`items[${index}][domain_name]`"
-                                                       x-model="item.domain_name"
-                                                       placeholder="Optional domain (e.g. client.com)"
-                                                       class="w-1/2 px-2.5 py-1 rounded-md border border-slate-200 text-[11px] text-slate-600 font-mono focus:border-violet-500 focus:outline-none bg-slate-50/50">
-                                                
-                                                <div class="flex items-center gap-1 w-1/2 text-[11px]">
+                                            <!-- Optional Hosting / Domain toggle (Keeps normal invoices clean!) -->
+                                            <div class="pt-0.5">
+                                                <button type="button" @click="item.showPeriod = !item.showPeriod" 
+                                                        class="text-[11px] font-semibold text-slate-400 hover:text-violet-600 inline-flex items-center gap-1 transition-colors">
+                                                    <span x-show="!item.showPeriod" class="flex items-center gap-1"><span>🌐</span> + Add Domain / Service Period (Optional)</span>
+                                                    <span x-show="item.showPeriod" x-cloak class="flex items-center gap-1 text-violet-600 font-bold"><span>▲</span> Hide Domain / Period</span>
+                                                </button>
+                                            </div>
+
+                                            <!-- Collapsible Domain & Service Period Inputs -->
+                                            <div x-show="item.showPeriod" x-cloak class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5 transition-all">
+                                                <div class="flex items-center gap-2">
+                                                    <input type="text"
+                                                           :name="`items[${index}][domain_name]`"
+                                                           x-model="item.domain_name"
+                                                           placeholder="Domain / Host (e.g. client.com)"
+                                                           class="w-1/2 px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] text-slate-700 font-mono focus:border-violet-500 focus:outline-none bg-white">
+                                                    
+                                                    <select :name="`items[${index}][billing_cycle]`" x-model="item.billing_cycle" class="w-1/2 px-2 py-1 text-[11px] rounded-lg border border-slate-200 bg-white font-medium text-slate-700">
+                                                        <option value="1 Year">Billing: 1 Year</option>
+                                                        <option value="Monthly">Billing: Monthly</option>
+                                                        <option value="3 Years">Billing: 3 Years</option>
+                                                        <option value="One-Time">Billing: One-Time</option>
+                                                    </select>
+                                                </div>
+                                                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 pt-0.5">
+                                                    <span class="font-medium text-slate-600">Period:</span>
                                                     <input type="date"
                                                            :name="`items[${index}][service_period_start]`"
                                                            x-model="item.service_period_start"
                                                            title="Period Start"
-                                                           class="w-1/2 px-1.5 py-1 rounded-md border border-slate-200 text-[10px] text-slate-600 focus:outline-none">
-                                                    <span class="text-slate-400">-</span>
+                                                           class="px-1.5 py-0.5 rounded border border-slate-200 text-[10px] text-slate-700 bg-white focus:outline-none">
+                                                    <span>to</span>
                                                     <input type="date"
                                                            :name="`items[${index}][service_period_end]`"
                                                            x-model="item.service_period_end"
                                                            title="Period End"
-                                                           class="w-1/2 px-1.5 py-1 rounded-md border border-slate-200 text-[10px] text-slate-600 focus:outline-none">
+                                                           class="px-1.5 py-0.5 rounded border border-slate-200 text-[10px] text-slate-700 bg-white focus:outline-none">
                                                 </div>
                                             </div>
-                                            <input type="hidden" :name="`items[${index}][billing_cycle]`" :value="item.billing_cycle || '1 Year'">
                                         </div>
                                     </td>
 
@@ -600,7 +623,8 @@
                         quantity: 1,
                         unit: 'Pcs',
                         rate: 0,
-                        gst_percent: 18
+                        gst_percent: 18,
+                        showPeriod: false
                     });
                     this.$nextTick(() => {
                         const newIdx = this.items.length - 1;

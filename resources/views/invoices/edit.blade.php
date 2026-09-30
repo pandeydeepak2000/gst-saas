@@ -14,10 +14,26 @@
                 'unit'                 => (string)($arr['unit'] ?? 'Pcs'),
                 'rate'                 => isset($arr['rate']) && is_numeric($arr['rate']) ? (float)$arr['rate'] : 0,
                 'gst_percent'          => isset($arr['gst_percent']) && is_numeric($arr['gst_percent']) ? (float)$arr['gst_percent'] : 18,
+                'showPeriod'           => !empty($arr['domain_name']) || !empty($arr['service_period_start']),
             ];
         })->values()->all();
     } else {
-        $initialEditItems = $existingItems->toArray();
+        $initialEditItems = collect($existingItems)->map(function($arr) {
+            $i = (array)$arr;
+            return [
+                'description'          => (string)($i['description'] ?? ''),
+                'domain_name'          => (string)($i['domain_name'] ?? ''),
+                'service_period_start' => (string)($i['service_period_start'] ?? ''),
+                'service_period_end'   => (string)($i['service_period_end'] ?? ''),
+                'billing_cycle'        => (string)($i['billing_cycle'] ?? '1 Year'),
+                'hsn_sac'              => (string)($i['hsn_sac'] ?? ''),
+                'quantity'             => isset($i['quantity']) && is_numeric($i['quantity']) ? (float)$i['quantity'] : 1,
+                'unit'                 => (string)($i['unit'] ?? 'Pcs'),
+                'rate'                 => isset($i['rate']) && is_numeric($i['rate']) ? (float)$i['rate'] : 0,
+                'gst_percent'          => isset($i['gst_percent']) && is_numeric($i['gst_percent']) ? (float)$i['gst_percent'] : 18,
+                'showPeriod'           => !empty($i['domain_name']) || !empty($i['service_period_start']),
+            ];
+        })->values()->all();
     }
 
     $initialServerErrors = [];
@@ -36,7 +52,7 @@
                 <span class="text-xl leading-none">⚠️</span>
                 <div>
                     <h4 class="font-bold text-sm" x-text="formErrorMessage"></h4>
-                    <p class="text-xs text-rose-700 mt-0.5">Niche red border wale fields ko check karein aur sahi karein. Aapka koi data reset nahi hua hai.</p>
+                    <p class="text-xs text-rose-700 mt-0.5">Niche lal (red) highlight kiye gaye fields ko check karein. Aapka koi data reset nahi hoga.</p>
                 </div>
             </div>
             <button type="button" @click="formErrorMessage = ''" class="text-rose-400 hover:text-rose-700 font-bold text-xl leading-none">&times;</button>
@@ -114,9 +130,13 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Due Date</label>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700">Due Date</label>
+                            <span class="text-[10px] text-slate-400 font-semibold">(Optional)</span>
+                        </div>
                         <input type="date" name="due_date" value="{{ old('due_date', optional($invoice->due_date)->format('Y-m-d')) }}"
                                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                        <p class="text-[11px] text-slate-400 mt-1">Khali chhod sakte hain (Due on Receipt)</p>
                     </div>
                 </div>
 
@@ -141,7 +161,7 @@
 
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Payment Method</label>
-                        <input type="text" name="payment_method" value="{{ old('payment_method', $invoice->payment_method) }}"
+                        <input type="text" name="payment_method" value="{{ old('payment_method', $invoice->payment_method) }}" placeholder="e.g. UPI, Cash, Bank Transfer"
                                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
                     </div>
                 </div>
@@ -171,7 +191,7 @@
                         <thead class="bg-slate-50 text-slate-600 text-xs uppercase font-semibold border-b border-slate-200">
                             <tr>
                                 <th class="py-2.5 px-3 w-12 text-center">#</th>
-                                <th class="py-2.5 px-3 min-w-[240px]">Item Description *</th>
+                                <th class="py-2.5 px-3 min-w-[240px]">Item Description & Name *</th>
                                 <th class="py-2.5 px-3 w-28">HSN/SAC</th>
                                 <th class="py-2.5 px-3 w-24 text-center">Qty *</th>
                                 <th class="py-2.5 px-3 w-24">Unit</th>
@@ -184,37 +204,62 @@
                         <tbody class="divide-y divide-slate-100">
                             <template x-for="(item, index) in items" :key="index">
                                 <tr class="hover:bg-slate-50/50">
-                                    <td class="py-2 px-3 text-center text-xs font-mono font-bold text-slate-400 align-top pt-3" x-text="index + 1"></td>
+                                    <td class="py-2.5 px-3 text-center text-xs font-mono font-bold text-slate-400 align-top pt-3" x-text="index + 1"></td>
                                     
                                     <td class="py-2 px-3 align-top">
-                                        <input type="text"
-                                               :name="`items[${index}][description]`"
-                                               :id="`field_item_${index}_description`"
-                                               x-model="item.description"
-                                               @input="clearError('item_' + index + '_description'); checkCatalog(item)"
-                                               @keydown.enter.prevent="addItem()"
-                                               placeholder="Item description or service..."
-                                               list="products-catalog"
-                                               :class="fieldErrors['item_' + index + '_description'] ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/40 text-rose-900 placeholder-rose-300' : 'border-slate-300'"
-                                               class="w-full px-3 py-1.5 text-sm rounded-lg border focus:ring-2 focus:ring-violet-500 focus:outline-none transition-colors">
-                                        <p x-show="fieldErrors['item_' + index + '_description']" x-text="fieldErrors['item_' + index + '_description']" class="text-[11px] text-rose-600 font-bold mt-1"></p>
-                                        
-                                        <!-- Hosting / Domain & Service Period Inputs -->
-                                        <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] bg-slate-50 p-1.5 rounded-lg border border-slate-200/70">
-                                            <span class="text-violet-700 font-bold">🌐 Domain/Cloud:</span>
-                                            <input type="text" :name="`items[${index}][domain_name]`" x-model="item.domain_name" placeholder="e.g. greenstudio.jixsite.com"
-                                                   class="px-2 py-0.5 text-xs rounded border border-slate-300 w-44 font-mono text-slate-900 bg-white">
-                                            <span class="text-slate-400">Period:</span>
-                                            <input type="date" :name="`items[${index}][service_period_start]`" x-model="item.service_period_start" class="px-1.5 py-0.5 text-[10px] rounded border border-slate-300 bg-white">
-                                            <span class="text-slate-400">to</span>
-                                            <input type="date" :name="`items[${index}][service_period_end]`" x-model="item.service_period_end" class="px-1.5 py-0.5 text-[10px] rounded border border-slate-300 bg-white">
-                                            <select :name="`items[${index}][billing_cycle]`" x-model="item.billing_cycle" class="px-1.5 py-0.5 text-[10px] rounded border border-slate-300 bg-white font-medium">
-                                                <option value="">Cycle</option>
-                                                <option value="1 Year">1 Year</option>
-                                                <option value="Monthly">Monthly</option>
-                                                <option value="3 Years">3 Years</option>
-                                                <option value="One-Time">One-Time</option>
-                                            </select>
+                                        <div class="space-y-1">
+                                            <input type="text"
+                                                   :name="`items[${index}][description]`"
+                                                   :id="`field_item_${index}_description`"
+                                                   x-model="item.description"
+                                                   @input="clearError('item_' + index + '_description'); checkCatalog(item)"
+                                                   @keydown.enter.prevent="addItem()"
+                                                   placeholder="Item description or service..."
+                                                   list="products-catalog"
+                                                   :class="fieldErrors['item_' + index + '_description'] ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/40 text-rose-900 placeholder-rose-300' : 'border-slate-300'"
+                                                   class="w-full px-3 py-1.5 text-sm rounded-lg border focus:ring-2 focus:ring-violet-500 focus:outline-none transition-colors">
+                                            <p x-show="fieldErrors['item_' + index + '_description']" x-text="fieldErrors['item_' + index + '_description']" class="text-[11px] text-rose-600 font-bold mt-1"></p>
+                                            
+                                            <!-- Optional Hosting / Domain toggle -->
+                                            <div class="pt-0.5">
+                                                <button type="button" @click="item.showPeriod = !item.showPeriod" 
+                                                        class="text-[11px] font-semibold text-slate-400 hover:text-violet-600 inline-flex items-center gap-1 transition-colors">
+                                                    <span x-show="!item.showPeriod" class="flex items-center gap-1"><span>🌐</span> + Add Domain / Service Period (Optional)</span>
+                                                    <span x-show="item.showPeriod" x-cloak class="flex items-center gap-1 text-violet-600 font-bold"><span>▲</span> Hide Domain / Period</span>
+                                                </button>
+                                            </div>
+
+                                            <!-- Collapsible Domain & Service Period Inputs -->
+                                            <div x-show="item.showPeriod" x-cloak class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5 transition-all">
+                                                <div class="flex items-center gap-2">
+                                                    <input type="text"
+                                                           :name="`items[${index}][domain_name]`"
+                                                           x-model="item.domain_name"
+                                                           placeholder="Domain / Server (e.g. client.com)"
+                                                           class="w-1/2 px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] text-slate-700 font-mono focus:border-violet-500 focus:outline-none bg-white">
+                                                    
+                                                    <select :name="`items[${index}][billing_cycle]`" x-model="item.billing_cycle" class="w-1/2 px-2 py-1 text-[11px] rounded-lg border border-slate-200 bg-white font-medium text-slate-700">
+                                                        <option value="1 Year">Billing: 1 Year</option>
+                                                        <option value="Monthly">Billing: Monthly</option>
+                                                        <option value="3 Years">Billing: 3 Years</option>
+                                                        <option value="One-Time">Billing: One-Time</option>
+                                                    </select>
+                                                </div>
+                                                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 pt-0.5">
+                                                    <span class="font-medium text-slate-600">Period:</span>
+                                                    <input type="date"
+                                                           :name="`items[${index}][service_period_start]`"
+                                                           x-model="item.service_period_start"
+                                                           title="Period Start"
+                                                           class="px-1.5 py-0.5 rounded border border-slate-200 text-[10px] text-slate-700 bg-white focus:outline-none">
+                                                    <span>to</span>
+                                                    <input type="date"
+                                                           :name="`items[${index}][service_period_end]`"
+                                                           x-model="item.service_period_end"
+                                                           title="Period End"
+                                                           class="px-1.5 py-0.5 rounded border border-slate-200 text-[10px] text-slate-700 bg-white focus:outline-none">
+                                                </div>
+                                            </div>
                                         </div>
                                     </td>
 
@@ -391,7 +436,8 @@
                         quantity: 1,
                         unit: 'Pcs',
                         rate: 0,
-                        gst_percent: 18
+                        gst_percent: 18,
+                        showPeriod: false
                     });
                     this.$nextTick(() => {
                         const newIdx = this.items.length - 1;
