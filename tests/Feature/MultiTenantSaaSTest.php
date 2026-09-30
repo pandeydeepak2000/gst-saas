@@ -1393,4 +1393,28 @@ class MultiTenantSaaSTest extends TestCase
         $this->assertTrue($headers->has('X-Mailer'));
         $this->assertStringContainsString('@', $headers->get('Message-ID')->getBodyAsString());
     }
+
+    public function test_customer_can_be_stored_via_ajax_quick_add(): void
+    {
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($admin);
+
+        $response = $this->postJson(route('customers.store'), [
+            'name'         => 'Quick Test Client',
+            'company_name' => 'Quick Client LLP',
+            'phone'        => '+919988112233',
+            'email'        => 'quickclient@example.com',
+            'state'        => 'Karnataka',
+            'gstin'        => '29ABCDE1234F1Z5',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+        $response->assertJsonPath('customer.name', 'Quick Test Client');
+
+        $this->assertDatabaseHas('customers', [
+            'name'       => 'Quick Test Client',
+            'company_id' => $admin->company_id,
+        ]);
+    }
 }

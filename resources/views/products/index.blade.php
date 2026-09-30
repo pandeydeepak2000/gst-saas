@@ -7,8 +7,8 @@
                 <h2 class="text-xl font-bold text-slate-900">Goods & Services Master</h2>
                 <p class="text-sm text-slate-500">Configure catalog items, HSN/SAC codes, default tax slabs, and rates for lightning-fast billing.</p>
             </div>
-            <button @click="createModal = true" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm transition-all">
-                + Add Item / Service
+            <button type="button" @click="createModal = true" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white text-sm font-bold shadow-md shadow-violet-600/25 transition-all">
+                <span class="text-base font-black">+</span> Add Item / Service
             </button>
         </div>
 
@@ -76,8 +76,21 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="py-8 text-center text-slate-400">
-                                No products catalogued yet. Click "+ Add Item / Service" to build your inventory!
+                            <td colspan="6" class="py-14 text-center">
+                                <div class="max-w-sm mx-auto space-y-3">
+                                    <div class="w-14 h-14 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center text-3xl mx-auto shadow-sm">
+                                        📦
+                                    </div>
+                                    <h4 class="text-base font-bold text-slate-900">No Products or Services Catalogued</h4>
+                                    <p class="text-xs text-slate-500 leading-relaxed">
+                                        Add items, SAC/HSN codes, and rates to your catalog to auto-fill line items when creating GST invoices.
+                                    </p>
+                                    <div class="pt-2">
+                                        <button type="button" @click="createModal = true" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white text-xs font-bold shadow-md shadow-violet-600/25 transition-all">
+                                            <span>+</span> Add Your First Item
+                                        </button>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                         @endforelse
