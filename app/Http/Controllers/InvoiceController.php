@@ -438,7 +438,32 @@ class InvoiceController extends Controller
                 'total_amount'   => $grandTotal,
             ]);
 
+            // Handle manual status changes in Edit
+            if ($validated['status'] === 'paid') {
+                $currentPaid = (float) $invoice->transactions()->sum('amount');
+                $remainingBalance = max(0, $grandTotal - $currentPaid);
+                if ($remainingBalance > 0) {
+                    InvoiceTransaction::create([
+                        'company_id'     => $company->id,
+                        'invoice_id'     => $invoice->id,
+                        'gateway'        => $validated['payment_method'] ?: 'Cash / Settlement',
+                        'payment_method' => strtolower($validated['payment_method'] ?: 'cash'),
+                        'transaction_id' => 'EDIT-PAID-' . strtoupper(uniqid()),
+                        'amount'         => $remainingBalance,
+                        'paid_at'        => now(),
+                        'notes'          => 'Marked as Paid via Invoice Edit',
+                    ]);
+                }
+            } elseif ($validated['status'] === 'unpaid' && $invoice->transactions()->count() > 0) {
+                // If explicitly reverted to unpaid, clear transactions
+                $invoice->transactions()->delete();
+            }
+
             $invoice->recalculatePaymentStatus();
+
+            if ($validated['status'] === 'draft') {
+                $invoice->update(['status' => 'draft']);
+            }
 
             ActivityLog::log('update', 'invoice', "Updated Invoice #{$invoice->invoice_number} details & items.", $invoice->id);
             DB::commit();

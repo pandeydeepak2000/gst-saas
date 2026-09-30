@@ -48,10 +48,20 @@
                 <span x-show="copyNotice" x-cloak class="text-emerald-600 font-bold">✓ Copied!</span>
             </button>
 
+            <!-- 1-CLICK QUICK MARK PAID -->
+            @if($invoice->balance_amount > 0)
+            <form action="{{ route('invoices.mark-paid', $invoice->id) }}" method="POST" onsubmit="return confirm('Mark Invoice #{{ $invoice->invoice_number }} as fully paid (₹{{ number_format($invoice->balance_amount, 2) }})?');">
+                @csrf
+                <button type="submit" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
+                    <span>⚡ Mark Paid</span>
+                </button>
+            </form>
+            @endif
+
             <!-- RECORD PAYMENT MODAL TRIGGER -->
             @if($invoice->balance_amount > 0)
             <button @click="recordModalOpen = true" 
-                    class="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
+                    class="px-3.5 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
                 <span>💰 Record Payment</span>
             </button>
             @endif

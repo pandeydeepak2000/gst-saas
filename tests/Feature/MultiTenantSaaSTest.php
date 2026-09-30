@@ -1518,6 +1518,88 @@ class MultiTenantSaaSTest extends TestCase
         $publicResponse->assertStatus(200);
         $publicResponse->assertSee('Cloud Hosting Plan');
     }
+
+    public function test_invoice_edit_marking_as_paid_creates_settlement_and_updates_status(): void
+    {
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($admin);
+
+        $customer = Customer::where('company_id', $admin->company_id)->first();
+
+        // 1. Create an unpaid invoice
+        $invoice = Invoice::create([
+            'company_id'     => $admin->company_id,
+            'customer_id'    => $customer->id,
+            'created_by'     => $admin->id,
+            'invoice_number' => 'INV-EDIT-PAID-' . uniqid(),
+            'public_uuid'    => (string) \Illuminate\Support\Str::uuid(),
+            'type'           => 'tax_invoice',
+            'invoice_date'   => '2026-09-30',
+            'due_date'       => null,
+            'sale_type'      => 'LOCAL',
+            'tax_mode'       => 'simple',
+            'status'         => 'unpaid',
+            'taxable_amount' => 500,
+            'total_amount'   => 590,
+            'paid_amount'    => 0,
+            'balance_amount' => 590,
+        ]);
+
+        $item = \App\Models\InvoiceItem::create([
+            'invoice_id'     => $invoice->id,
+            'description'    => 'Consulting Service',
+            'quantity'       => 1,
+            'unit'           => 'Hours',
+            'rate'           => 500,
+            'gst_percent'    => 18,
+            'taxable_amount' => 500,
+            'cgst_amount'    => 45,
+            'sgst_amount'    => 45,
+            'igst_amount'    => 0,
+            'line_total'     => 590,
+        ]);
+
+        $this->assertEquals('unpaid', $invoice->fresh()->status);
+        $this->assertEquals(590, $invoice->fresh()->balance_amount);
+
+        // 2. Edit the invoice and change status to 'paid'
+        $updatePayload = [
+            'customer_id'    => $customer->id,
+            'invoice_number' => $invoice->invoice_number,
+            'type'           => 'tax_invoice',
+            'invoice_date'   => '2026-09-30',
+            'due_date'       => null,
+            'sale_type'      => 'LOCAL',
+            'tax_mode'       => 'simple',
+            'status'         => 'paid', // Changed to PAID
+            'payment_method' => 'Cash',
+            'items'          => [
+                [
+                    'description' => 'Consulting Service',
+                    'quantity'    => 1,
+                    'unit'        => 'Hours',
+                    'rate'        => 500,
+                    'gst_percent' => 18,
+                ]
+            ],
+        ];
+
+        $response = $this->put(route('invoices.update', $invoice->id), $updatePayload);
+        $response->assertSessionHasNoErrors();
+
+        // 3. Verify invoice is now PAID with 0 balance
+        $freshInvoice = $invoice->fresh();
+        $this->assertEquals('paid', $freshInvoice->status);
+        $this->assertEquals(0, $freshInvoice->balance_amount);
+        $this->assertEquals(590, $freshInvoice->paid_amount);
+
+        // 4. Verify transaction was recorded
+        $this->assertDatabaseHas('invoice_transactions', [
+            'invoice_id' => $invoice->id,
+            'amount'     => 590,
+        ]);
+    }
 }
+
 
 
