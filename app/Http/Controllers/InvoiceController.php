@@ -95,6 +95,19 @@ class InvoiceController extends Controller
             'items.*.unit'                 => ['required', 'string', 'max:20'],
             'items.*.rate'                 => ['required', 'numeric', 'min:0'],
             'items.*.gst_percent'          => ['required', 'numeric', 'min:0', 'max:100'],
+        ], [
+            'customer_id.required'         => 'Please select a customer or click Quick Add.',
+            'customer_id.exists'           => 'The selected customer is invalid.',
+            'invoice_number.required'      => 'Invoice number is required.',
+            'invoice_number.unique'        => 'This invoice number is already taken. Please enter a unique invoice number.',
+            'invoice_date.required'        => 'Invoice date is required.',
+            'items.required'               => 'Please add at least one line item to the invoice.',
+            'items.min'                    => 'Please add at least one line item to the invoice.',
+            'items.*.description.required' => 'Item description / service name is required for all rows.',
+            'items.*.quantity.required'    => 'Quantity is required for all items.',
+            'items.*.quantity.min'         => 'Quantity must be at least 0.01.',
+            'items.*.rate.required'        => 'Rate is required for all items.',
+            'items.*.rate.min'             => 'Rate cannot be negative.',
         ]);
 
         DB::beginTransaction();
@@ -330,6 +343,19 @@ class InvoiceController extends Controller
             'items.*.unit'                 => ['required', 'string', 'max:20'],
             'items.*.rate'                 => ['required', 'numeric', 'min:0'],
             'items.*.gst_percent'          => ['required', 'numeric', 'min:0', 'max:100'],
+        ], [
+            'customer_id.required'         => 'Please select a customer or click Quick Add.',
+            'customer_id.exists'           => 'The selected customer is invalid.',
+            'invoice_number.required'      => 'Invoice number is required.',
+            'invoice_number.unique'        => 'This invoice number is already taken. Please enter a unique invoice number.',
+            'invoice_date.required'        => 'Invoice date is required.',
+            'items.required'               => 'Please add at least one line item to the invoice.',
+            'items.min'                    => 'Please add at least one line item to the invoice.',
+            'items.*.description.required' => 'Item description / service name is required for all rows.',
+            'items.*.quantity.required'    => 'Quantity is required for all items.',
+            'items.*.quantity.min'         => 'Quantity must be at least 0.01.',
+            'items.*.rate.required'        => 'Rate is required for all items.',
+            'items.*.rate.min'             => 'Rate cannot be negative.',
         ]);
 
         DB::beginTransaction();

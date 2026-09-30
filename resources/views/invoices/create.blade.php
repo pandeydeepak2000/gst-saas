@@ -1,7 +1,61 @@
+@php
+    $defaultItems = [
+        [
+            'description'          => '',
+            'domain_name'          => '',
+            'service_period_start' => '',
+            'service_period_end'   => '',
+            'billing_cycle'        => '1 Year',
+            'hsn_sac'              => '998313',
+            'quantity'             => 1,
+            'unit'                 => 'Pcs',
+            'rate'                 => 0,
+            'gst_percent'          => 18,
+        ]
+    ];
+    $rawItems = old('items');
+    if ($rawItems && is_array($rawItems) && count($rawItems) > 0) {
+        $initialItems = collect($rawItems)->map(function($i) {
+            return [
+                'description'          => (string)($i['description'] ?? ''),
+                'domain_name'          => (string)($i['domain_name'] ?? ''),
+                'service_period_start' => (string)($i['service_period_start'] ?? ''),
+                'service_period_end'   => (string)($i['service_period_end'] ?? ''),
+                'billing_cycle'        => (string)($i['billing_cycle'] ?? '1 Year'),
+                'hsn_sac'              => (string)($i['hsn_sac'] ?? ''),
+                'quantity'             => isset($i['quantity']) && is_numeric($i['quantity']) ? (float)$i['quantity'] : 1,
+                'unit'                 => (string)($i['unit'] ?? 'Pcs'),
+                'rate'                 => isset($i['rate']) && is_numeric($i['rate']) ? (float)$i['rate'] : 0,
+                'gst_percent'          => isset($i['gst_percent']) && is_numeric($i['gst_percent']) ? (float)$i['gst_percent'] : 18,
+            ];
+        })->values()->all();
+    } else {
+        $initialItems = $defaultItems;
+    }
+
+    $initialServerErrors = [];
+    foreach ($errors->messages() as $field => $msgs) {
+        $cleanField = str_replace(['items.', '.'], ['item_', '_'], $field);
+        $initialServerErrors[$cleanField] = $msgs[0];
+    }
+@endphp
+
 <x-app-layout header="Create GST Tax Invoice">
     <div class="max-w-6xl mx-auto space-y-6" x-data="invoiceBuilder()">
         
-        <form action="{{ route('invoices.store') }}" method="POST" @submit="validateForm($event)" class="space-y-6">
+        <!-- Instant Real-Time Error Alert Banner (Client or Server) -->
+        <div x-show="formErrorMessage" x-cloak class="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-900 shadow-sm flex items-start justify-between gap-3 transition-all">
+            <div class="flex items-start gap-2.5">
+                <span class="text-xl leading-none">⚠️</span>
+                <div>
+                    <h4 class="font-bold text-sm" x-text="formErrorMessage"></h4>
+                    <p class="text-xs text-rose-700 mt-0.5">Niche red border wale fields ko check karein aur sahi karein. Aapka koi data reset nahi hua hai.</p>
+                </div>
+            </div>
+            <button type="button" @click="formErrorMessage = ''" class="text-rose-400 hover:text-rose-700 font-bold text-xl leading-none">&times;</button>
+        </div>
+
+        <form action="{{ route('invoices.store') }}" method="POST" novalidate @submit="validateForm($event)" class="space-y-6">
             @csrf
 
             <!-- Top Header Card -->
@@ -32,9 +86,13 @@
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                             Invoice Number *
                         </label>
-                        <input type="text" name="invoice_number" value="{{ old('invoice_number', $suggestedNumber) }}" required
-                               class="w-full px-3.5 py-2 rounded-xl border-2 border-violet-200 text-violet-900 font-mono font-bold focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none bg-violet-50/20">
-                        <p class="text-[11px] text-violet-600 font-medium mt-1 flex items-center gap-1">
+                        <input type="text" name="invoice_number" id="field_invoice_number"
+                               value="{{ old('invoice_number', $suggestedNumber) }}"
+                               @input="clearError('invoice_number')"
+                               :class="fieldErrors['invoice_number'] ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/40 text-rose-900' : 'border-violet-200 text-violet-900 bg-violet-50/20'"
+                               class="w-full px-3.5 py-2 rounded-xl border-2 font-mono font-bold focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none transition-colors">
+                        <p x-show="fieldErrors['invoice_number']" x-text="fieldErrors['invoice_number']" class="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1"></p>
+                        <p x-show="!fieldErrors['invoice_number']" class="text-[11px] text-violet-600 font-medium mt-1 flex items-center gap-1">
                             <span>✏️</span> Freely editable by company
                         </p>
                     </div>
@@ -48,12 +106,16 @@
                                 <span>Quick Add</span>
                             </button>
                         </div>
-                        <select name="customer_id" x-model="selectedCustomerId" @change="onCustomerChange($event.target.value)" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                        <select name="customer_id" id="field_customer_id" x-model="selectedCustomerId"
+                                @change="clearError('customer_id'); onCustomerChange($event.target.value)"
+                                :class="fieldErrors['customer_id'] ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/40 text-rose-900' : 'border-slate-300'"
+                                class="w-full px-3.5 py-2 rounded-xl border text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none transition-colors">
                             <option value="">Select Customer...</option>
                             <template x-for="c in customerList" :key="c.id">
                                 <option :value="c.id" x-text="c.name + (c.company_name ? ' (' + c.company_name + ')' : '')" :selected="c.id == selectedCustomerId"></option>
                             </template>
                         </select>
+                        <p x-show="fieldErrors['customer_id']" x-text="fieldErrors['customer_id']" class="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1"></p>
                         <template x-if="customerList.length === 0">
                             <div class="mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200/80 text-amber-900 text-[11px] flex items-center justify-between">
                                 <span>No clients registered yet.</span>
@@ -65,8 +127,12 @@
                     <!-- 3. INVOICE DATE -->
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Invoice Date *</label>
-                        <input type="date" name="invoice_date" value="{{ old('invoice_date', date('Y-m-d')) }}" required
-                               class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                        <input type="date" name="invoice_date" id="field_invoice_date"
+                               value="{{ old('invoice_date', date('Y-m-d')) }}"
+                               @input="clearError('invoice_date')"
+                               :class="fieldErrors['invoice_date'] ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/40 text-rose-900' : 'border-slate-300'"
+                               class="w-full px-3.5 py-2 rounded-xl border text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none transition-colors">
+                        <p x-show="fieldErrors['invoice_date']" x-text="fieldErrors['invoice_date']" class="text-[11px] text-rose-600 font-bold mt-1 flex items-center gap-1"></p>
                     </div>
 
                     <!-- 4. DUE DATE -->
@@ -82,8 +148,8 @@
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Document Type</label>
                         <select name="type" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-violet-500 focus:outline-none">
-                            <option value="tax_invoice" selected>Official GST Tax Invoice</option>
-                            <option value="proforma">Proforma / Estimate / Quotation</option>
+                            <option value="tax_invoice" {{ old('type') === 'tax_invoice' ? 'selected' : '' }}>Official GST Tax Invoice</option>
+                            <option value="proforma" {{ old('type') === 'proforma' ? 'selected' : '' }}>Proforma / Estimate / Quotation</option>
                         </select>
                     </div>
                     <div>
@@ -97,22 +163,22 @@
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Initial Status</label>
                         <select name="status" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
-                            <option value="unpaid">Unpaid / Due</option>
-                            <option value="paid">Paid</option>
-                            <option value="partially_paid">Partially Paid</option>
-                            <option value="draft">Draft</option>
+                            <option value="unpaid" {{ old('status', 'unpaid') === 'unpaid' ? 'selected' : '' }}>Unpaid / Due</option>
+                            <option value="paid" {{ old('status') === 'paid' ? 'selected' : '' }}>Paid</option>
+                            <option value="partially_paid" {{ old('status') === 'partially_paid' ? 'selected' : '' }}>Partially Paid</option>
+                            <option value="draft" {{ old('status') === 'draft' ? 'selected' : '' }}>Draft</option>
                         </select>
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Payment Method / Note</label>
-                        <input type="text" name="payment_method" placeholder="e.g. UPI, NetBanking, Cash"
+                        <input type="text" name="payment_method" value="{{ old('payment_method') }}" placeholder="e.g. UPI, NetBanking, Cash"
                                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
                     </div>
                 </div>
             </div>
 
-            <!-- Line Items Table (Single-line, professional 38px inputs) -->
+            <!-- Line Items Table -->
             <div class="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-4">
                 <div class="flex items-center justify-between">
                     <div>
@@ -131,11 +197,11 @@
                         <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider font-semibold border-b border-slate-200">
                             <tr>
                                 <th class="py-2.5 px-3 w-10 text-center">#</th>
-                                <th class="py-2.5 px-3 min-w-[280px]">Item Description & Details</th>
+                                <th class="py-2.5 px-3 min-w-[280px]">Item Description & Details *</th>
                                 <th class="py-2.5 px-3 w-28">HSN/SAC</th>
-                                <th class="py-2.5 px-3 w-24">Qty</th>
+                                <th class="py-2.5 px-3 w-24 text-center">Qty *</th>
                                 <th class="py-2.5 px-3 w-24">Unit</th>
-                                <th class="py-2.5 px-3 w-32">Rate (₹)</th>
+                                <th class="py-2.5 px-3 w-32 text-right">Rate (₹) *</th>
                                 <th class="py-2.5 px-3 w-24" x-show="taxMode !== 'simple'">GST %</th>
                                 <th class="py-2.5 px-3 w-36 text-right">Taxable</th>
                                 <th class="py-2.5 px-3 w-36 text-right">Total (₹)</th>
@@ -146,46 +212,75 @@
                             <template x-for="(item, index) in items" :key="index">
                                 <tr class="hover:bg-slate-50/50 transition-colors">
                                     <!-- Index -->
-                                    <td class="py-2 px-3 text-center text-xs font-mono text-slate-400 font-bold" x-text="index + 1"></td>
+                                    <td class="py-2 px-3 text-center text-xs font-mono text-slate-400 font-bold align-top pt-3" x-text="index + 1"></td>
 
                                     <!-- Description & Domain/Hosting Options -->
-                                    <td class="py-2 px-3">
+                                    <td class="py-2 px-3 align-top">
                                         <div class="space-y-1.5">
-                                            <input type="text" x-model="item.description" @input="checkCatalog(item)" required
-                                                   placeholder="Product or service name..." list="catalog-list"
-                                                   class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                                            <input type="text"
+                                                   :name="`items[${index}][description]`"
+                                                   :id="`field_item_${index}_description`"
+                                                   x-model="item.description"
+                                                   @input="clearError('item_' + index + '_description'); checkCatalog(item)"
+                                                   @keydown.enter.prevent="addItem()"
+                                                   placeholder="Product or service name..."
+                                                   list="catalog-list"
+                                                   :class="fieldErrors['item_' + index + '_description'] ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/40 text-rose-900 placeholder-rose-300' : 'border-slate-300'"
+                                                   class="w-full px-3 py-1.5 rounded-lg border text-xs font-medium focus:ring-2 focus:ring-violet-500 focus:outline-none transition-colors">
                                             
+                                            <p x-show="fieldErrors['item_' + index + '_description']" x-text="fieldErrors['item_' + index + '_description']" class="text-[11px] text-rose-600 font-bold flex items-center gap-1"></p>
+
                                             <!-- Optional Hosting/Domain expansion row -->
                                             <div class="flex items-center gap-2 pt-0.5">
-                                                <input type="text" x-model="item.domain_name" placeholder="Optional domain (e.g. client.com)"
+                                                <input type="text"
+                                                       :name="`items[${index}][domain_name]`"
+                                                       x-model="item.domain_name"
+                                                       placeholder="Optional domain (e.g. client.com)"
                                                        class="w-1/2 px-2.5 py-1 rounded-md border border-slate-200 text-[11px] text-slate-600 font-mono focus:border-violet-500 focus:outline-none bg-slate-50/50">
                                                 
                                                 <div class="flex items-center gap-1 w-1/2 text-[11px]">
-                                                    <input type="date" x-model="item.service_period_start" title="Period Start"
+                                                    <input type="date"
+                                                           :name="`items[${index}][service_period_start]`"
+                                                           x-model="item.service_period_start"
+                                                           title="Period Start"
                                                            class="w-1/2 px-1.5 py-1 rounded-md border border-slate-200 text-[10px] text-slate-600 focus:outline-none">
                                                     <span class="text-slate-400">-</span>
-                                                    <input type="date" x-model="item.service_period_end" title="Period End"
+                                                    <input type="date"
+                                                           :name="`items[${index}][service_period_end]`"
+                                                           x-model="item.service_period_end"
+                                                           title="Period End"
                                                            class="w-1/2 px-1.5 py-1 rounded-md border border-slate-200 text-[10px] text-slate-600 focus:outline-none">
                                                 </div>
                                             </div>
+                                            <input type="hidden" :name="`items[${index}][billing_cycle]`" :value="item.billing_cycle || '1 Year'">
                                         </div>
                                     </td>
 
                                     <!-- HSN/SAC -->
-                                    <td class="py-2 px-3">
-                                        <input type="text" x-model="item.hsn_sac" placeholder="998313"
+                                    <td class="py-2 px-3 align-top">
+                                        <input type="text"
+                                               :name="`items[${index}][hsn_sac]`"
+                                               x-model="item.hsn_sac"
+                                               placeholder="998313"
                                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-violet-500 focus:outline-none">
                                     </td>
 
                                     <!-- Quantity -->
-                                    <td class="py-2 px-3">
-                                        <input type="number" x-model.number="item.quantity" min="0.01" step="any" required
-                                               class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-center focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                                    <td class="py-2 px-3 align-top">
+                                        <input type="number"
+                                               :name="`items[${index}][quantity]`"
+                                               :id="`field_item_${index}_quantity`"
+                                               x-model.number="item.quantity"
+                                               @input="clearError('item_' + index + '_quantity')"
+                                               min="0.01" step="any"
+                                               :class="fieldErrors['item_' + index + '_quantity'] ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/40 text-rose-900' : 'border-slate-300'"
+                                               class="w-full px-2.5 py-1.5 rounded-lg border text-xs font-bold text-center focus:ring-2 focus:ring-violet-500 focus:outline-none transition-colors">
+                                        <p x-show="fieldErrors['item_' + index + '_quantity']" x-text="fieldErrors['item_' + index + '_quantity']" class="text-[10px] text-rose-600 font-bold mt-1 text-center"></p>
                                     </td>
 
                                     <!-- Unit -->
-                                    <td class="py-2 px-3">
-                                        <select x-model="item.unit" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                                    <td class="py-2 px-3 align-top">
+                                        <select :name="`items[${index}][unit]`" x-model="item.unit" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-violet-500 focus:outline-none">
                                             <option value="Pcs">Pcs</option>
                                             <option value="Year">Year</option>
                                             <option value="Month">Month</option>
@@ -198,17 +293,25 @@
                                     </td>
 
                                     <!-- Rate -->
-                                    <td class="py-2 px-3">
+                                    <td class="py-2 px-3 align-top">
                                         <div class="relative">
-                                            <span class="absolute left-2.5 top-1.5 text-xs text-slate-400">₹</span>
-                                            <input type="number" x-model.number="item.rate" min="0" step="0.01" required
-                                                   class="w-full pl-6 pr-2.5 py-1.5 rounded-lg border border-slate-300 font-mono text-xs font-bold text-right focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                                            <span class="absolute left-2.5 top-1.5 text-xs font-bold" :class="fieldErrors['item_' + index + '_rate'] ? 'text-rose-500' : 'text-slate-400'">₹</span>
+                                            <input type="number"
+                                                   :name="`items[${index}][rate]`"
+                                                   :id="`field_item_${index}_rate`"
+                                                   x-model.number="item.rate"
+                                                   @input="clearError('item_' + index + '_rate')"
+                                                   @keydown.enter.prevent="addItem()"
+                                                   min="0" step="0.01"
+                                                   :class="fieldErrors['item_' + index + '_rate'] ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/40 text-rose-900' : 'border-slate-300'"
+                                                   class="w-full pl-6 pr-2.5 py-1.5 rounded-lg border font-mono text-xs font-bold text-right focus:ring-2 focus:ring-violet-500 focus:outline-none transition-colors">
                                         </div>
+                                        <p x-show="fieldErrors['item_' + index + '_rate']" x-text="fieldErrors['item_' + index + '_rate']" class="text-[10px] text-rose-600 font-bold mt-1 text-right"></p>
                                     </td>
 
-                                    <!-- GST Percent (hidden in simple mode) -->
-                                    <td class="py-2 px-3" x-show="taxMode !== 'simple'">
-                                        <select x-model.number="item.gst_percent" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                                    <!-- GST Percent -->
+                                    <td class="py-2 px-3 align-top" x-show="taxMode !== 'simple'">
+                                        <select :name="`items[${index}][gst_percent]`" x-model.number="item.gst_percent" class="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-violet-500 focus:outline-none">
                                             <option value="0">0%</option>
                                             <option value="5">5%</option>
                                             <option value="12">12%</option>
@@ -216,19 +319,23 @@
                                             <option value="28">28%</option>
                                         </select>
                                     </td>
+                                    <!-- Fallback hidden input when taxMode is simple to guarantee gst_percent posts -->
+                                    <template x-if="taxMode === 'simple'">
+                                        <input type="hidden" :name="`items[${index}][gst_percent]`" :value="item.gst_percent || 18">
+                                    </template>
 
                                     <!-- Taxable Amount (Calculated) -->
-                                    <td class="py-2 px-3 text-right font-mono text-xs text-slate-700 font-semibold"
+                                    <td class="py-2 px-3 text-right font-mono text-xs text-slate-700 font-semibold align-top pt-3"
                                         x-text="formatCurrency((item.quantity || 0) * (item.rate || 0))">
                                     </td>
 
                                     <!-- Line Total (Calculated) -->
-                                    <td class="py-2 px-3 text-right font-mono text-xs text-slate-900 font-bold"
+                                    <td class="py-2 px-3 text-right font-mono text-xs text-slate-900 font-bold align-top pt-3"
                                         x-text="formatCurrency(calculateLineTotal(item))">
                                     </td>
 
                                     <!-- Remove Action -->
-                                    <td class="py-2 px-2 text-center">
+                                    <td class="py-2 px-2 text-center align-top pt-2">
                                         <button type="button" @click="removeItem(index)" x-show="items.length > 1"
                                                 class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors">
                                             &times;
@@ -243,7 +350,7 @@
                 <!-- Add Row Button -->
                 <div class="pt-2">
                     <button type="button" @click="addItem()" class="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-300 hover:border-violet-500 text-xs font-bold text-slate-600 hover:text-violet-700 transition-colors flex items-center justify-center gap-2 bg-slate-50/50 hover:bg-violet-50/20">
-                        <span>+</span> Add Another Line Item
+                        <span>+</span> Add Another Line Item (Or Press Enter in Item/Rate)
                     </button>
                 </div>
             </div>
@@ -262,13 +369,13 @@
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Invoice Notes / Subject</label>
                         <textarea name="notes" rows="2" placeholder="e.g. Website development milestone 1 or Cloud server renewal"
-                                  class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"></textarea>
+                                  class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">{{ old('notes') }}</textarea>
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Terms & Conditions</label>
                         <textarea name="terms_and_conditions" rows="3"
-                                  class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-violet-500 focus:outline-none">{{ $company->terms_and_conditions }}</textarea>
+                                  class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-violet-500 focus:outline-none">{{ old('terms_and_conditions', $company->terms_and_conditions) }}</textarea>
                     </div>
                 </div>
 
@@ -351,7 +458,7 @@
                 <div class="space-y-3.5">
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Contact Person / Name *</label>
-                        <input type="text" x-model="quickCustomer.name" placeholder="e.g. Ramesh Kumar" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                        <input type="text" x-model="quickCustomer.name" placeholder="e.g. Ramesh Kumar" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:violet-500 focus:outline-none">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -399,13 +506,15 @@
     <script>
         function invoiceBuilder() {
             return {
-                taxMode: '{{ $company->tax_mode }}',
+                taxMode: '{{ old('tax_mode', $company->tax_mode) }}',
                 catalog: @json($products),
                 customerList: @json($customers),
                 selectedCustomerId: '{{ old('customer_id', '') }}',
                 showQuickCustomerModal: false,
                 savingCustomer: false,
                 quickCustomerError: '',
+                fieldErrors: @json($initialServerErrors),
+                formErrorMessage: '{{ $errors->any() ? "Kuch fields me galti hai. Kripya niche highlighted red fields ko check karein." : "" }}',
                 quickCustomer: {
                     name: '',
                     company_name: '',
@@ -415,10 +524,8 @@
                     gstin: '',
                     billing_address: ''
                 },
-                saleType: 'LOCAL',
-                items: [
-                    { description: '', domain_name: '', service_period_start: '', service_period_end: '', billing_cycle: '1 Year', hsn_sac: '', quantity: 1, unit: 'Pcs', rate: 0, gst_percent: 18 }
-                ],
+                saleType: '{{ old('sale_type', 'LOCAL') }}',
+                items: @json($initialItems),
                 onCustomerChange(custId) {
                     const cust = this.customerList.find(c => String(c.id) === String(custId));
                     if (cust && cust.state) {
@@ -452,6 +559,7 @@
                         if (response.ok && data.success) {
                             this.customerList.push(data.customer);
                             this.selectedCustomerId = String(data.customer.id);
+                            this.clearError('customer_id');
                             this.onCustomerChange(data.customer.id);
                             this.showQuickCustomerModal = false;
                             this.quickCustomer = {
@@ -482,25 +590,46 @@
                     }
                 },
                 addItem() {
-                    this.items.push({ description: '', domain_name: '', service_period_start: '', service_period_end: '', billing_cycle: '1 Year', hsn_sac: '', quantity: 1, unit: 'Pcs', rate: 0, gst_percent: 18 });
+                    this.items.push({
+                        description: '',
+                        domain_name: '',
+                        service_period_start: '',
+                        service_period_end: '',
+                        billing_cycle: '1 Year',
+                        hsn_sac: '998313',
+                        quantity: 1,
+                        unit: 'Pcs',
+                        rate: 0,
+                        gst_percent: 18
+                    });
+                    this.$nextTick(() => {
+                        const newIdx = this.items.length - 1;
+                        const newEl = document.getElementById(`field_item_${newIdx}_description`);
+                        if (newEl) newEl.focus();
+                    });
                 },
                 removeItem(idx) {
                     if (this.items.length > 1) {
                         this.items.splice(idx, 1);
+                        const updated = {};
+                        Object.keys(this.fieldErrors).forEach(k => {
+                            if (!k.startsWith('item_')) updated[k] = this.fieldErrors[k];
+                        });
+                        this.fieldErrors = updated;
                     }
                 },
                 calculateLineTotal(item) {
-                    const taxable = (item.quantity || 0) * (item.rate || 0);
-                    const tax = taxable * ((item.gst_percent || 0) / 100);
+                    const taxable = (Number(item.quantity) || 0) * (Number(item.rate) || 0);
+                    const tax = taxable * ((Number(item.gst_percent) || 0) / 100);
                     return taxable + tax;
                 },
                 totalTaxable() {
-                    return this.items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.rate || 0)), 0);
+                    return this.items.reduce((sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.rate) || 0)), 0);
                 },
                 totalTax() {
                     return this.items.reduce((sum, item) => {
-                        const taxable = (item.quantity || 0) * (item.rate || 0);
-                        return sum + (taxable * ((item.gst_percent || 0) / 100));
+                        const taxable = (Number(item.quantity) || 0) * (Number(item.rate) || 0);
+                        return sum + (taxable * ((Number(item.gst_percent) || 0) / 100));
                     }, 0);
                 },
                 grandTotal() {
@@ -509,16 +638,72 @@
                 formatCurrency(val) {
                     return '₹' + (Number(val) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 },
+                clearError(fieldKey) {
+                    if (this.fieldErrors[fieldKey]) {
+                        delete this.fieldErrors[fieldKey];
+                        if (Object.keys(this.fieldErrors).length === 0) {
+                            this.formErrorMessage = '';
+                        }
+                    }
+                },
                 validateForm(e) {
+                    this.fieldErrors = {};
+                    this.formErrorMessage = '';
+
+                    // 1. Invoice Number Check
+                    const invEl = document.getElementById('field_invoice_number');
+                    if (!invEl || !invEl.value.trim()) {
+                        this.fieldErrors['invoice_number'] = 'Invoice number is required.';
+                    }
+
+                    // 2. Customer Check
                     if (!this.selectedCustomerId) {
-                        alert('Please select a customer or click "+ Quick Add" to add one.');
-                        e.preventDefault();
-                        return;
+                        this.fieldErrors['customer_id'] = 'Please select a customer or click "+ Quick Add".';
                     }
-                    if (this.items.length === 0) {
-                        alert('Please add at least one line item.');
-                        e.preventDefault();
+
+                    // 3. Invoice Date Check
+                    const dateEl = document.getElementById('field_invoice_date');
+                    if (!dateEl || !dateEl.value) {
+                        this.fieldErrors['invoice_date'] = 'Invoice date is required.';
                     }
+
+                    // 4. Line Items Check
+                    if (!this.items || this.items.length === 0) {
+                        this.fieldErrors['items_general'] = 'Please add at least one line item.';
+                    } else {
+                        this.items.forEach((item, idx) => {
+                            const desc = (item.description || '').trim();
+                            if (!desc) {
+                                this.fieldErrors['item_' + idx + '_description'] = `Row #${idx + 1}: Item description / product name is required.`;
+                            }
+
+                            const qty = Number(item.quantity);
+                            if (item.quantity === '' || item.quantity === null || isNaN(qty) || qty <= 0) {
+                                this.fieldErrors['item_' + idx + '_quantity'] = `Row #${idx + 1}: Qty must be > 0.`;
+                            }
+
+                            const rate = Number(item.rate);
+                            if (item.rate === '' || item.rate === null || isNaN(rate) || rate < 0) {
+                                this.fieldErrors['item_' + idx + '_rate'] = `Row #${idx + 1}: Rate is required and cannot be negative.`;
+                            }
+                        });
+                    }
+
+                    // If any error exists: STOP FORM SUBMISSION, HIGHLIGHT RED, SMOOTH FOCUS
+                    if (Object.keys(this.fieldErrors).length > 0) {
+                        e.preventDefault();
+                        this.formErrorMessage = 'Kuch details khali ya galat hain. Niche lal (red) highlight kiye gaye fields ko fill karein.';
+
+                        this.$nextTick(() => {
+                            const firstErr = document.querySelector('.border-rose-500');
+                            if (firstErr) {
+                                firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                firstErr.focus();
+                            }
+                        });
+                        return false;
+                    }
+                    return true;
                 }
             }
         }

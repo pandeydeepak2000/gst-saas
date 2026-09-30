@@ -1417,4 +1417,51 @@ class MultiTenantSaaSTest extends TestCase
             'company_id' => $admin->company_id,
         ]);
     }
+
+    public function test_invoice_creation_validation_messages_and_item_required(): void
+    {
+        $admin = User::where('email', 'admin@acme.com')->first();
+        $this->actingAs($admin);
+
+        // Missing customer and empty items
+        $response = $this->post(route('invoices.store'), [
+            'invoice_number' => 'TEST-VAL-001',
+            'invoice_date'   => '2026-09-30',
+            'sale_type'      => 'LOCAL',
+            'tax_mode'       => 'simple',
+            'status'         => 'unpaid',
+            'items'          => [],
+        ]);
+
+        $response->assertSessionHasErrors([
+            'customer_id' => 'Please select a customer or click Quick Add.',
+            'items'       => 'Please add at least one line item to the invoice.',
+        ]);
+
+        // Item missing description and rate
+        $response2 = $this->post(route('invoices.store'), [
+            'customer_id'    => 1,
+            'invoice_number' => 'TEST-VAL-002',
+            'invoice_date'   => '2026-09-30',
+            'sale_type'      => 'LOCAL',
+            'tax_mode'       => 'simple',
+            'status'         => 'unpaid',
+            'items'          => [
+                [
+                    'description' => '',
+                    'quantity'    => 0,
+                    'unit'        => 'Pcs',
+                    'rate'        => -5,
+                    'gst_percent' => 18,
+                ]
+            ],
+        ]);
+
+        $response2->assertSessionHasErrors([
+            'items.0.description' => 'Item description / service name is required for all rows.',
+            'items.0.quantity'    => 'Quantity must be at least 0.01.',
+            'items.0.rate'        => 'Rate cannot be negative.',
+        ]);
+    }
 }
+
