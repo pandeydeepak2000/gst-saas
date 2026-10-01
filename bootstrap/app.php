@@ -17,9 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'tenant'     => \App\Http\Middleware\EnsureTenant::class,
-            'role'       => \App\Http\Middleware\CheckRole::class,
-            'permission' => \App\Http\Middleware\CheckPermission::class,
+            'tenant'        => \App\Http\Middleware\EnsureTenant::class,
+            'role'          => \App\Http\Middleware\CheckRole::class,
+            'permission'    => \App\Http\Middleware\CheckPermission::class,
+            'demo.restrict' => \App\Http\Middleware\RestrictDemoAccount::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

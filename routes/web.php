@@ -59,7 +59,7 @@ Route::middleware('guest')->group(function () {
 });
 
 // Authenticated & Multi-Tenant Routes
-Route::middleware(['auth', 'tenant'])->group(function () {
+Route::middleware(['auth', 'tenant', 'demo.restrict'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Holding page for unverified/pending company onboarding

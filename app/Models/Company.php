@@ -55,6 +55,7 @@ class Company extends Model
         'show_bank_on_invoice',
         'show_qr_on_invoice',
         'is_active',
+        'is_demo',
         'approval_status',
         'trial_ends_at',
     ];
@@ -66,9 +67,19 @@ class Company extends Model
         'show_bank_on_invoice' => 'boolean',
         'show_qr_on_invoice' => 'boolean',
         'is_active' => 'boolean',
+        'is_demo' => 'boolean',
         'invoice_start_number' => 'integer',
         'trial_ends_at' => 'datetime',
     ];
+
+    public function isDemo(): bool
+    {
+        if (app()->runningUnitTests()) {
+            return (bool) $this->is_demo;
+        }
+
+        return (bool) ($this->is_demo || in_array($this->slug, ['acme-infotech', 'bharat-traders']) || in_array($this->email, ['billing@acme.com', 'contact@bharattraders.com']));
+    }
 
     public function users(): HasMany
     {

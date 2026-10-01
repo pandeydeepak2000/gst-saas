@@ -79,6 +79,10 @@
                     </button>
                     @endif
                 </div>
+                <p class="text-[10px] text-slate-400 mt-2 flex items-center gap-1.5">
+                    <span>🔒</span>
+                    <span>Demo workspaces are restricted to read-only preview mode.</span>
+                </p>
             </div>
             @endif
         </div>

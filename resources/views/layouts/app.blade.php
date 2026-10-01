@@ -51,6 +51,22 @@
 </head>
 <body class="h-full font-sans antialiased text-slate-800" x-data="{ mobileSidebarOpen: false, showImpersonateModal: false, showOnboardModal: {{ ($errors->has('company_name') || $errors->has('email') || $errors->has('gstin') || $errors->has('admin_name') || $errors->has('password') || old('company_name')) ? 'true' : 'false' }} }" @open-onboard-modal.window="showOnboardModal = true">
 
+    @if($user && $user->isDemo())
+    <!-- DEMO MODE ACTIVE NOTIFICATION BANNER -->
+    <div class="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white px-4 py-2.5 text-xs font-bold shadow-md flex flex-wrap items-center justify-between gap-3 no-print sticky top-0 z-[100]">
+        <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-full bg-black/25 text-amber-100 font-extrabold uppercase text-[10px] tracking-wider border border-white/20">
+                🔒 DEMO PREVIEW ONLY
+            </span>
+            <span>You are exploring a shared demo workspace. Creating real invoices, adding customers/staff, and editing settings are restricted.</span>
+        </div>
+        <a href="{{ route('register') }}" class="px-3.5 py-1.5 rounded-xl bg-white text-slate-900 hover:bg-amber-50 font-black text-xs shadow-md transition-all flex items-center gap-1.5 flex-shrink-0">
+            <span>🚀 Register Your Own Company</span>
+            <span>&rarr;</span>
+        </a>
+    </div>
+    @endif
+
     <div class="min-h-full flex flex-col lg:flex-row">
         
         <!-- Mobile Sidebar Backdrop -->

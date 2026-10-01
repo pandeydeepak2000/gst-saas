@@ -1694,6 +1694,62 @@ class MultiTenantSaaSTest extends TestCase
         $company = $admin->company->fresh();
         $this->assertNull($company->logo_path);
     }
+
+    public function test_demo_account_cannot_create_invoices_customers_staff_or_change_settings(): void
+    {
+        $demoUser = User::where('email', 'admin@acme.com')->first();
+        $demoUser->update(['is_demo' => true]);
+        $demoUser->company->update(['is_demo' => true]);
+
+        $this->actingAs($demoUser);
+
+        // 1. Can view dashboard and invoices (GET allowed)
+        $dashResponse = $this->get('/dashboard');
+        $dashResponse->assertStatus(200);
+        $dashResponse->assertSee('DEMO PREVIEW ONLY');
+
+        // 2. Cannot create invoice (POST blocked)
+        $invoiceResponse = $this->post(route('invoices.store'), [
+            'customer_id'    => Customer::first()->id,
+            'invoice_number' => 'BLOCKED-DEMO-001',
+            'invoice_date'   => '2026-10-01',
+            'type'           => 'tax_invoice',
+            'items'          => [
+                ['description' => 'Test', 'quantity' => 1, 'rate' => 100, 'gst_percent' => 18]
+            ]
+        ]);
+        $invoiceResponse->assertSessionHas('warning');
+        $this->assertDatabaseMissing('invoices', ['invoice_number' => 'BLOCKED-DEMO-001']);
+
+        // 3. Cannot add customer (POST blocked)
+        $customerResponse = $this->post(route('customers.store'), [
+            'name'  => 'Blocked Demo Customer',
+            'state' => 'Bihar',
+        ]);
+        $customerResponse->assertSessionHas('warning');
+        $this->assertDatabaseMissing('customers', ['name' => 'Blocked Demo Customer']);
+
+        // 4. Cannot create staff (POST blocked)
+        $staffResponse = $this->post(route('team.store'), [
+            'name'     => 'Blocked Staff',
+            'email'    => 'blockedstaff@demo.com',
+            'password' => 'password123',
+            'role'     => 'staff',
+        ]);
+        $staffResponse->assertSessionHas('warning');
+        $this->assertDatabaseMissing('users', ['email' => 'blockedstaff@demo.com']);
+
+        // 5. Cannot update settings (POST blocked)
+        $settingsResponse = $this->post(route('settings.update'), [
+            'name'                 => 'Hacked Company Name',
+            'state'                => 'Bihar',
+            'tax_mode'             => 'simple',
+            'invoice_prefix'       => 'INV/',
+            'invoice_start_number' => 1,
+        ]);
+        $settingsResponse->assertSessionHas('warning');
+        $this->assertDatabaseMissing('companies', ['name' => 'Hacked Company Name']);
+    }
 }
 
 
