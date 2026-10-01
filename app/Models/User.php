@@ -93,6 +93,11 @@ class User extends Authenticatable
         return in_array($this->role, ['super_admin', 'company_admin']);
     }
 
+    public function invoices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Invoice::class, 'created_by');
+    }
+
     public function hasPermission(string $module): bool
     {
         if ($this->isSuperAdmin() || $this->isCompanyAdmin()) {
@@ -107,3 +112,4 @@ class User extends Authenticatable
         return in_array($module, $perms);
     }
 }
+

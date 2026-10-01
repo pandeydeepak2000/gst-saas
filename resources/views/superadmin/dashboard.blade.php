@@ -60,10 +60,10 @@
                     <div class="text-2xl font-black text-indigo-300 font-mono mt-1">{{ $totalInvoices }}</div>
                     <div class="text-xs text-slate-400 mt-0.5">GST bills generated</div>
                 </div>
-                <div>
+                <div @click="currentTab = 'users'" class="cursor-pointer hover:opacity-80 transition-opacity">
                     <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Platform Users</div>
                     <div class="text-2xl font-black text-purple-300 font-mono mt-1">{{ $totalUsers }}</div>
-                    <div class="text-xs text-slate-400 mt-0.5">Company admins & staff</div>
+                    <div class="text-xs text-slate-400 mt-0.5">Company admins & staff →</div>
                 </div>
             </div>
         </div>
@@ -77,9 +77,17 @@
                 <span>Tenant Directory ({{ $totalCompanies }})</span>
             </button>
 
+            <button @click="currentTab = 'users'" 
+                    :class="currentTab === 'users' ? 'text-blue-600 border-blue-600 bg-blue-50/50' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50'"
+                    class="px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 rounded-t-xl">
+                <span>👥</span>
+                <span>Platform Users ({{ $totalUsers }})</span>
+            </button>
+
             <button @click="currentTab = 'approvals'" 
                     :class="currentTab === 'approvals' ? 'text-amber-600 border-amber-600 bg-amber-50/50' : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50'"
                     class="px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 rounded-t-xl relative">
+
                 <span>🛡️</span>
                 <span>Approvals & Security Queue</span>
                 @if($pendingApprovalsCount > 0)
@@ -234,7 +242,20 @@
                                                 {{ $comp->is_active ? 'Suspend' : 'Activate' }}
                                             </button>
                                         </form>
+
+                                        <form action="{{ route('superadmin.companies.destroy', $comp->id) }}" method="POST"
+                                              onsubmit="return confirm('⚠️ DANGER: Permanently delete company \'{{ addslashes($comp->name) }}\'?\n\nThis will permanently delete:\n• The company account & settings\n• Primary Admin ({{ $comp->users->first()?->email }}) & all staff logins\n• ALL {{ $comp->invoices_count }} INVOICES, customer records, and items\n• All payment transactions and activity history\n\nAre you 100% sure you want to permanently delete everything?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" 
+                                                    title="Permanently delete company and purge all invoices/data"
+                                                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                <span>Delete</span>
+                                            </button>
+                                        </form>
                                     </div>
+
                                 </td>
                             </tr>
                             @empty
@@ -256,6 +277,186 @@
                 @if($companies->hasPages())
                     <div class="p-4 border-t border-slate-100">
                         {{ $companies->appends(['tab' => 'directory', 'search' => request('search')])->links() }}
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB: PLATFORM USERS DIRECTORY               -->
+        <!-- ========================================== -->
+        <div x-show="currentTab === 'users'" class="space-y-4">
+            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-5">
+                <form action="{{ route('superadmin.index') }}" method="GET" class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <input type="hidden" name="tab" value="users">
+                    <div class="relative w-full sm:w-96">
+                        <input type="text" name="user_search" value="{{ request('user_search') }}" placeholder="Search user name, email, phone, or company..."
+                               class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">🔍</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if(request('user_search'))
+                            <a href="{{ route('superadmin.index', ['tab' => 'users']) }}" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100">
+                                Clear Search
+                            </a>
+                        @endif
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm">
+                            Filter Users
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                            <span>👥 Platform Users & Staff Directory</span>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                                {{ $platformUsers->total() }} Total Accounts
+                            </span>
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Manage all registered accounts. Deleting a company admin will purge the company and all its invoices.</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600">
+                        <thead class="bg-slate-50/80 text-slate-400 font-bold uppercase tracking-wider text-[11px] border-b border-slate-100">
+                            <tr>
+                                <th class="py-3.5 px-4">User Details</th>
+                                <th class="py-3.5 px-4">Assigned Company</th>
+                                <th class="py-3.5 px-4 text-center">Role</th>
+                                <th class="py-3.5 px-4 text-center">Invoices</th>
+                                <th class="py-3.5 px-4 text-center">Status</th>
+                                <th class="py-3.5 px-4">Registered</th>
+                                <th class="py-3.5 px-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @forelse($platformUsers as $u)
+                            <tr class="hover:bg-slate-50/60 transition-colors">
+                                <td class="py-4 px-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 rounded-xl bg-slate-900 text-white font-bold flex items-center justify-center text-xs shadow-sm">
+                                            {{ substr($u->name, 0, 1) }}
+                                        </div>
+                                        <div>
+                                            <div class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                                                <span>{{ $u->name }}</span>
+                                                @if($u->isOnline())
+                                                    <span class="w-2 h-2 rounded-full bg-emerald-500" title="Active now"></span>
+                                                @endif
+                                            </div>
+                                            <div class="text-slate-500 text-xs font-mono">{{ $u->email }}</div>
+                                            @if($u->phone)
+                                                <div class="text-[11px] text-slate-400">📞 {{ $u->phone }}</div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    @if($u->company)
+                                        <div class="font-bold text-slate-900">{{ $u->company->name }}</div>
+                                        <div class="text-[11px] font-mono text-slate-400">
+                                            GSTIN: {{ $u->company->gstin ?: 'Unregistered' }} · {{ $u->company->state }}
+                                        </div>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                                            Platform Governance
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="py-4 px-4 text-center">
+                                    @if($u->role === 'super_admin')
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-200">
+                                            👑 Super Admin
+                                        </span>
+                                    @elseif($u->role === 'company_admin')
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                            🏢 Company Admin
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                                            👤 {{ ucfirst($u->role) }}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="py-4 px-4 text-center font-mono font-bold text-slate-700">
+                                    @if($u->company)
+                                        {{ $u->company->invoices_count }}
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td class="py-4 px-4 text-center">
+                                    @if($u->is_active)
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                                            Active
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800">
+                                            Suspended
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="py-4 px-4 text-slate-500 whitespace-nowrap">
+                                    <div>{{ $u->created_at->format('d M Y') }}</div>
+                                    <div class="text-[10px] text-slate-400">{{ $u->created_at->diffForHumans() }}</div>
+                                </td>
+                                <td class="py-4 px-4 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        @if($u->role === 'super_admin')
+                                            <span class="text-xs text-slate-400 italic">Protected</span>
+                                        @elseif($u->role === 'company_admin' && $u->company)
+                                            <form action="{{ route('superadmin.impersonate', $u->company->id) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" title="Impersonate into this company"
+                                                        class="px-2.5 py-1.5 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold border border-brand-200 transition-all flex items-center gap-1">
+                                                    <span>⚡</span> Impersonate
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('superadmin.users.destroy', $u->id) }}" method="POST"
+                                                  onsubmit="return confirm('⚠️ DANGER: \'{{ addslashes($u->name) }}\' is the Primary Admin of \'{{ addslashes($u->company->name) }}\'!\n\nDeleting this user will PERMANENTLY DELETE the company \'{{ addslashes($u->company->name) }}\' and ALL its {{ $u->company->invoices_count }} invoices, customers, and data.\n\nAre you sure you want to proceed? Type OK to delete.')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" 
+                                                        title="Delete company admin and purge all invoices/data"
+                                                        class="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center gap-1">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    <span>Delete</span>
+                                                </button>
+                                            </form>
+                                        @else
+                                            <form action="{{ route('superadmin.users.destroy', $u->id) }}" method="POST"
+                                                  onsubmit="return confirm('Permanently delete staff user \'{{ addslashes($u->name) }}\' ({{ $u->email }})?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" 
+                                                        title="Delete user"
+                                                        class="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center gap-1">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    <span>Delete</span>
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="7" class="text-center py-12 text-slate-400 text-sm">
+                                    No users found matching your search.
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                @if($platformUsers->hasPages())
+                    <div class="p-4 border-t border-slate-100">
+                        {{ $platformUsers->appends(['tab' => 'users', 'user_search' => request('user_search')])->links() }}
                     </div>
                 @endif
             </div>
@@ -320,8 +521,17 @@
                                     Reject
                                 </button>
                             </form>
+                            <form action="{{ route('superadmin.companies.destroy', $pending->id) }}" method="POST"
+                                  onsubmit="return confirm('Permanently delete pending registration for \'{{ addslashes($pending->name) }}\'? This will purge all associated accounts and data.')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="px-3 py-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold text-xs transition-all">
+                                    Delete
+                                </button>
+                            </form>
                         </div>
                     </div>
+
                     @empty
                     <div class="p-8 text-center text-slate-400 text-xs">
                         ✓ All company onboarding registrations are verified! No pending company reviews.

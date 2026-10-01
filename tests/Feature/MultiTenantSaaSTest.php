@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Product;
+use App\Models\InvoiceItem;
 use App\Models\InvoiceTransaction;
 use App\Models\EmailOtp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1750,7 +1751,149 @@ class MultiTenantSaaSTest extends TestCase
         $settingsResponse->assertSessionHas('warning');
         $this->assertDatabaseMissing('companies', ['name' => 'Hacked Company Name']);
     }
+
+    public function test_superadmin_can_purge_tenant_company_and_all_associated_invoices_and_data(): void
+    {
+        $superAdmin = User::where('email', 'superadmin@gstsaas.com')->first();
+        $this->actingAs($superAdmin);
+
+        // 1. Create a tenant company with admin, customer, product, invoices, transactions
+        $company = Company::create([
+            'name'     => 'Delete Me Logistics Ltd',
+            'slug'     => 'delete-me-logistics',
+            'email'    => 'billing@deleteme.com',
+            'state'    => 'Delhi',
+            'gstin'    => '07AAAAA9999A1Z1',
+            'tax_mode' => 'simple',
+        ]);
+
+        $adminUser = User::create([
+            'name'       => 'Sanjay Verma',
+            'email'      => 'sanjay@deleteme.com',
+            'password'   => bcrypt('SecretPassword123!'),
+            'company_id' => $company->id,
+            'role'       => 'company_admin',
+            'is_active'  => true,
+        ]);
+
+        $customer = Customer::create([
+            'company_id' => $company->id,
+            'name'       => 'Test Client 123',
+            'state'      => 'Delhi',
+        ]);
+
+        $invoice = Invoice::create([
+            'company_id'     => $company->id,
+            'customer_id'    => $customer->id,
+            'created_by'     => $adminUser->id,
+            'invoice_number' => 'DEL-001',
+            'invoice_date'   => now()->toDateString(),
+            'total_amount'   => 5000,
+            'status'         => 'paid',
+        ]);
+
+        InvoiceItem::create([
+            'invoice_id'  => $invoice->id,
+            'description' => 'Logistics service',
+            'quantity'    => 1,
+            'unit_price'  => 5000,
+            'total'       => 5000,
+        ]);
+
+        InvoiceTransaction::create([
+            'company_id' => $company->id,
+            'invoice_id' => $invoice->id,
+            'gateway'    => 'UPI',
+            'amount'     => 5000,
+            'paid_at'    => now(),
+        ]);
+
+        // Verify data exists
+        $this->assertDatabaseHas('companies', ['id' => $company->id]);
+        $this->assertDatabaseHas('users', ['id' => $adminUser->id]);
+        $this->assertDatabaseHas('customers', ['id' => $customer->id]);
+        $this->assertDatabaseHas('invoices', ['id' => $invoice->id]);
+        $this->assertDatabaseHas('invoice_items', ['invoice_id' => $invoice->id]);
+        $this->assertDatabaseHas('invoice_transactions', ['invoice_id' => $invoice->id]);
+
+        // 2. Super Admin sends DELETE request
+        $deleteResp = $this->delete(route('superadmin.companies.destroy', $company->id));
+        $deleteResp->assertRedirect(route('superadmin.index', ['tab' => 'directory']));
+        $deleteResp->assertSessionHas('success');
+
+        // 3. Verify ALL data is completely wiped
+        $this->assertDatabaseMissing('companies', ['id' => $company->id]);
+        $this->assertDatabaseMissing('users', ['id' => $adminUser->id]);
+        $this->assertDatabaseMissing('customers', ['id' => $customer->id]);
+        $this->assertDatabaseMissing('invoices', ['id' => $invoice->id]);
+        $this->assertDatabaseMissing('invoice_items', ['invoice_id' => $invoice->id]);
+        $this->assertDatabaseMissing('invoice_transactions', ['invoice_id' => $invoice->id]);
+
+        // Audit log recorded
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'company_purged',
+        ]);
+    }
+
+    public function test_superadmin_can_delete_user_and_purges_company_if_primary_admin(): void
+    {
+        $superAdmin = User::where('email', 'superadmin@gstsaas.com')->first();
+        $this->actingAs($superAdmin);
+
+        // 1. Create company and company admin with invoice
+        $company = Company::create([
+            'name'     => 'Quick Purge Enterprises',
+            'slug'     => 'quick-purge',
+            'email'    => 'admin@quickpurge.com',
+            'state'    => 'Maharashtra',
+            'tax_mode' => 'simple',
+        ]);
+
+        $adminUser = User::create([
+            'name'       => 'Pooja Sharma',
+            'email'      => 'pooja@quickpurge.com',
+            'password'   => bcrypt('password123'),
+            'company_id' => $company->id,
+            'role'       => 'company_admin',
+            'is_active'  => true,
+        ]);
+
+        $customer = Customer::create([
+            'company_id' => $company->id,
+            'name'       => 'Client QP',
+            'state'      => 'Maharashtra',
+        ]);
+
+        $invoice = Invoice::create([
+            'company_id'     => $company->id,
+            'customer_id'    => $customer->id,
+            'invoice_number' => 'QP-001',
+            'invoice_date'   => now()->toDateString(),
+            'total_amount'   => 1200,
+            'status'         => 'unpaid',
+        ]);
+
+        // 2. Delete user
+        $response = $this->delete(route('superadmin.users.destroy', $adminUser->id));
+        $response->assertSessionHas('success');
+
+        // Verify company, user, and invoice are all wiped
+        $this->assertDatabaseMissing('users', ['id' => $adminUser->id]);
+        $this->assertDatabaseMissing('companies', ['id' => $company->id]);
+        $this->assertDatabaseMissing('invoices', ['id' => $invoice->id]);
+    }
+
+    public function test_superadmin_cannot_delete_self(): void
+    {
+        $superAdmin = User::where('email', 'superadmin@gstsaas.com')->first();
+        $this->actingAs($superAdmin);
+
+        $response = $this->delete(route('superadmin.users.destroy', $superAdmin->id));
+        $response->assertSessionHasErrors('error');
+        $this->assertDatabaseHas('users', ['id' => $superAdmin->id]);
+    }
 }
+
 
 
 

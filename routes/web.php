@@ -156,6 +156,8 @@ Route::middleware(['auth', 'tenant', 'demo.restrict'])->group(function () {
         Route::post('/email-requests/{id}/reject', [SuperAdminController::class, 'rejectEmailChange'])->name('superadmin.reject_email_change');
         Route::post('/onboarding-policy/toggle', [SuperAdminController::class, 'toggleOnboardingPolicy'])->name('superadmin.toggle_onboarding_policy');
         Route::post('/companies/{id}/impersonate', [SuperAdminController::class, 'impersonate'])->name('superadmin.impersonate');
+        Route::delete('/companies/{id}', [SuperAdminController::class, 'destroyCompany'])->name('superadmin.companies.destroy');
+        Route::delete('/users/{id}', [SuperAdminController::class, 'destroyUser'])->name('superadmin.users.destroy');
     });
     Route::post('/super-admin/stop-impersonate', [SuperAdminController::class, 'stopImpersonate'])->name('superadmin.stop_impersonate');
 });

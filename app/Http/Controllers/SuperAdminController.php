@@ -5,14 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\User;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\InvoiceTransaction;
+use App\Models\Customer;
+use App\Models\Product;
+use App\Models\EmailOtp;
 use App\Models\ActivityLog;
 use App\Models\EmailChangeRequest;
 use App\Models\PlatformSetting;
 use App\Services\PlatformMailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+
 
 class SuperAdminController extends Controller
 {
@@ -95,6 +103,25 @@ class SuperAdminController extends Controller
         // Platform Policy
         $requireApproval = PlatformSetting::get('require_admin_approval_for_onboarding') === '1';
 
+        // Platform Users Directory
+        $usersQuery = User::with(['company' => function($q) {
+            $q->withCount('invoices');
+        }])->latest('id');
+
+        if ($request->filled('user_search')) {
+            $us = trim($request->user_search);
+            $usersQuery->where(function($q) use ($us) {
+                $q->where('name', 'like', "%{$us}%")
+                  ->orWhere('email', 'like', "%{$us}%")
+                  ->orWhere('phone', 'like', "%{$us}%")
+                  ->orWhereHas('company', function($cq) use ($us) {
+                      $cq->where('name', 'like', "%{$us}%");
+                  });
+            });
+        }
+
+        $platformUsers = $usersQuery->paginate(20, ['*'], 'users_page');
+
         return view('superadmin.dashboard', compact(
             'tab',
             'totalCompanies',
@@ -112,9 +139,11 @@ class SuperAdminController extends Controller
             'recentUsers',
             'allCompaniesList',
             'platformMail',
-            'requireApproval'
+            'requireApproval',
+            'platformUsers'
         ));
     }
+
 
     /**
      * Directly provision and onboard a new company tenant from Super Admin panel
@@ -523,4 +552,125 @@ class SuperAdminController extends Controller
         return redirect()->route('superadmin.index', ['tab' => 'audit'])
             ->with('success', "Audit trail retention cleanup complete: {$deletedCount} logs ({$label}) purged successfully.");
     }
+
+    /**
+     * Permanently purge a tenant company and all its associated invoices, customers, products, transactions, and users.
+     */
+    public function destroyCompany($id)
+    {
+        $company = Company::findOrFail($id);
+
+        if (session('impersonated_company_id') == $company->id) {
+            return back()->withErrors(['error' => 'Cannot delete a company currently being impersonated. Please exit impersonation first.']);
+        }
+
+        $companyName  = $company->name;
+        $invoiceCount = Invoice::withoutGlobalScopes()->where('company_id', $company->id)->withTrashed()->count();
+        $userCount    = User::where('company_id', $company->id)->count();
+
+        DB::transaction(function () use ($company) {
+            // 1. Get all invoice IDs for this company (including soft deleted)
+            $invoiceIds = Invoice::withoutGlobalScopes()
+                ->where('company_id', $company->id)
+                ->withTrashed()
+                ->pluck('id');
+
+            // 2. Delete invoice items and transactions
+            if ($invoiceIds->isNotEmpty()) {
+                InvoiceItem::withoutGlobalScopes()->whereIn('invoice_id', $invoiceIds)->delete();
+                InvoiceTransaction::withoutGlobalScopes()->whereIn('invoice_id', $invoiceIds)->delete();
+            }
+            InvoiceTransaction::withoutGlobalScopes()->where('company_id', $company->id)->delete();
+
+            // 3. Force delete all invoices
+            Invoice::withoutGlobalScopes()
+                ->where('company_id', $company->id)
+                ->withTrashed()
+                ->forceDelete();
+
+            // 4. Delete customers and products
+            Customer::withoutGlobalScopes()->where('company_id', $company->id)->delete();
+            Product::withoutGlobalScopes()->where('company_id', $company->id)->delete();
+
+            // 5. Delete email change requests and OTPs
+            EmailChangeRequest::where('company_id', $company->id)->delete();
+            $userEmails = User::where('company_id', $company->id)->pluck('email');
+            if ($userEmails->isNotEmpty()) {
+                EmailOtp::whereIn('email', $userEmails)->delete();
+            }
+
+            // 6. Delete logo and signature files from public storage
+            if ($company->logo_path && Storage::disk('public')->exists($company->logo_path)) {
+                Storage::disk('public')->delete($company->logo_path);
+            }
+            if ($company->signature_path && Storage::disk('public')->exists($company->signature_path)) {
+                Storage::disk('public')->delete($company->signature_path);
+            }
+
+            // 7. Delete all users belonging to this company (protect super admins if attached)
+            User::where('company_id', $company->id)
+                ->where('role', '!=', 'super_admin')
+                ->delete();
+
+            // 8. Delete company activity logs
+            ActivityLog::withoutGlobalScopes()->where('company_id', $company->id)->delete();
+
+            // 9. Delete the company record itself
+            $company->delete();
+        });
+
+        ActivityLog::create([
+            'user_id'     => auth()->id(),
+            'user_name'   => auth()->user()->name,
+            'role'        => 'super_admin',
+            'action'      => 'company_purged',
+            'module'      => 'superadmin',
+            'description' => "Super Admin permanently deleted company '{$companyName}' along with all {$invoiceCount} invoices and {$userCount} users.",
+            'ip_address'  => request()->ip(),
+        ]);
+
+        return redirect()->route('superadmin.index', ['tab' => 'directory'])
+            ->with('success', "Tenant company '{$companyName}' and ALL its {$invoiceCount} invoices, customer records, products, and users have been permanently deleted.");
+    }
+
+    /**
+     * Delete an individual user. If the user is a Primary Company Admin, purges the company and all invoices as requested.
+     */
+    public function destroyUser($id)
+    {
+        $user = User::with('company')->findOrFail($id);
+
+        if ($user->id === auth()->id()) {
+            return back()->withErrors(['error' => 'You cannot delete your own active Super Admin account.']);
+        }
+
+        if ($user->role === 'super_admin') {
+            return back()->withErrors(['error' => 'Platform Super Admin accounts cannot be deleted here.']);
+        }
+
+        $userName  = $user->name;
+        $userEmail = $user->email;
+        $company   = $user->company;
+
+        // If this user is the Primary Admin of a company, purge the company and all its invoices as requested!
+        if ($user->role === 'company_admin' && $company) {
+            return $this->destroyCompany($company->id);
+        }
+
+        // Otherwise delete the staff user
+        $user->delete();
+
+        ActivityLog::create([
+            'user_id'     => auth()->id(),
+            'user_name'   => auth()->user()->name,
+            'role'        => 'super_admin',
+            'action'      => 'user_deleted',
+            'module'      => 'superadmin',
+            'description' => "Super Admin deleted user '{$userName}' ({$userEmail}).",
+            'ip_address'  => request()->ip(),
+        ]);
+
+        return back()->with('success', "User '{$userName}' ({$userEmail}) has been deleted successfully.");
+    }
 }
+
